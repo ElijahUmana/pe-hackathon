@@ -126,7 +126,7 @@ class TestRedirectCacheMiss:
         cached_value = json.loads(call_args[0][2])
 
         assert cache_key == f"url:{short_code}"
-        assert ttl == 300
+        assert ttl == 600
         assert cached_value["original_url"] == "https://miss-write.example.com"
         assert cached_value["url_id"] == url_id
 

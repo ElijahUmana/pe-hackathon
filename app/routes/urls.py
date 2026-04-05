@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, redirect, request
 from peewee import IntegrityError
 from playhouse.shortcuts import model_to_dict
 
+from app.cache import CACHE_TTL
 from app.metrics import CACHE_HITS, CACHE_MISSES, REDIRECTS_TOTAL, URLS_CREATED
 from app.models.event import Event
 from app.models.url import URL
@@ -330,7 +331,7 @@ def redirect_short_url(short_code):
         try:
             redis.setex(
                 f"url:{short_code}",
-                300,
+                CACHE_TTL,
                 json.dumps({
                     "original_url": original_url,
                     "url_id": url_id,

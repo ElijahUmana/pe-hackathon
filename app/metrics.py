@@ -63,15 +63,21 @@ def init_metrics(app):
 
         return response
 
+    _gauge_cache = {"active_urls": 0, "last_updated": 0}
+
     @app.route("/metrics")
     def metrics():
         from flask import Response
 
-        # Update gauges
-        try:
-            from app.models.url import URL
-            ACTIVE_URLS.set(URL.select().where(URL.is_active == True).count())  # noqa: E712
-        except Exception:
-            pass
+        # Update active_urls gauge at most once per 30 seconds
+        now = time.time()
+        if now - _gauge_cache["last_updated"] > 30:
+            try:
+                from app.models.url import URL
+                _gauge_cache["active_urls"] = URL.select().where(URL.is_active == True).count()  # noqa: E712
+                _gauge_cache["last_updated"] = now
+            except Exception:
+                pass
+        ACTIVE_URLS.set(_gauge_cache["active_urls"])
 
         return Response(generate_latest(), mimetype=CONTENT_TYPE_LATEST)
