@@ -41,6 +41,15 @@ def create_app(testing=False):
     # Prometheus metrics
     init_metrics(app)
 
+    # Pre-warm Redis cache with active URLs (skip during testing)
+    if not testing:
+        try:
+            from app.cache import warm_cache
+
+            warm_cache(app)
+        except Exception as e:
+            logging.getLogger(__name__).warning(f"Cache warm-up skipped: {e}")
+
     # Health check
     @app.route("/health")
     def health():

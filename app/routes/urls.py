@@ -273,13 +273,20 @@ def redirect_short_url(short_code):
         return response
 
     # DB lookup — only active URLs (Hint 4: Slumbering Guide)
-    try:
-        url_obj = URL.get(
-            (URL.short_code == short_code) & (URL.is_active == True)  # noqa: E712
-        )
-    except URL.DoesNotExist:
+    # Use .dicts() and select only needed columns to skip model instantiation
+    row = (
+        URL.select(URL.original_url, URL.id, URL.user_id)
+        .where((URL.short_code == short_code) & (URL.is_active == True))  # noqa: E712
+        .dicts()
+        .first()
+    )
+    if row is None:
         # No event logged for inactive/missing URLs (Hint 4)
         return jsonify({"error": "URL not found"}), 404
+
+    original_url = row["original_url"]
+    url_id = row["id"]
+    user_id = row["user_id"]
 
     # Cache the result
     if redis:
@@ -288,9 +295,9 @@ def redirect_short_url(short_code):
                 f"url:{short_code}",
                 300,
                 json.dumps({
-                    "original_url": url_obj.original_url,
-                    "url_id": url_obj.id,
-                    "user_id": url_obj.user_id,
+                    "original_url": original_url,
+                    "url_id": url_id,
+                    "user_id": user_id,
                 }),
             )
         except Exception:
@@ -298,8 +305,8 @@ def redirect_short_url(short_code):
 
     # Log redirect event BEFORE returning (Hint 2: Unseen Observer)
     Event.create(
-        url_id=url_obj.id,
-        user_id=url_obj.user_id,
+        url_id=url_id,
+        user_id=user_id,
         event_type="redirect",
         timestamp=datetime.datetime.utcnow(),
         details=json.dumps({
@@ -308,6 +315,6 @@ def redirect_short_url(short_code):
         }),
     )
 
-    response = redirect(url_obj.original_url, code=302)
+    response = redirect(original_url, code=302)
     response.headers["X-Cache"] = "MISS"
     return response

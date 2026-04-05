@@ -35,7 +35,7 @@ def setup_logging(app):
     @app.after_request
     def log_request(response):
         from flask import request
-        if request.path == "/metrics":
+        if request.path in ("/metrics", "/health"):
             return response
         logger = logging.getLogger("app.request")
         logger.info(

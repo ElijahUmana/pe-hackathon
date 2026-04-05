@@ -25,6 +25,10 @@ class URL(BaseModel):
 
     class Meta:
         table_name = "urls"
+        indexes = (
+            (("short_code", "is_active"), False),
+            (("user_id",), False),
+        )
 
     def save(self, *args, **kwargs):
         self.updated_at = datetime.datetime.utcnow()

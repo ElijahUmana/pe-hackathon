@@ -32,16 +32,20 @@ CACHE_MISSES = Counter("cache_misses_total", "Total cache misses")
 ACTIVE_URLS = Gauge("active_urls", "Number of active URLs")
 
 
+_SKIP_METRICS_PATHS = frozenset({"/metrics", "/health"})
+
+
 def init_metrics(app):
     """Initialize Prometheus metrics middleware."""
 
     @app.before_request
     def _start_timer():
-        request._start_time = time.time()
+        if request.path not in _SKIP_METRICS_PATHS:
+            request._start_time = time.time()
 
     @app.after_request
     def _record_metrics(response):
-        if request.path == "/metrics":
+        if request.path in _SKIP_METRICS_PATHS:
             return response
 
         latency = time.time() - getattr(request, "_start_time", time.time())

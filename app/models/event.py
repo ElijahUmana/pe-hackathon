@@ -17,3 +17,7 @@ class Event(BaseModel):
 
     class Meta:
         table_name = "events"
+        indexes = (
+            (("url_id",), False),
+            (("event_type",), False),
+        )

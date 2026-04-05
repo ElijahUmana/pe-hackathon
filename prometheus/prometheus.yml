@@ -19,4 +19,6 @@ scrape_configs:
           - "app1:5000"
           - "app2:5000"
           - "app3:5000"
+          - "app4:5000"
+          - "app5:5000"
     metrics_path: /metrics

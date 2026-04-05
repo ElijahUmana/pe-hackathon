@@ -2,7 +2,50 @@
 
 This document defines structured chaos experiments to validate the system's resilience. Each experiment follows the scientific method: hypothesis, method, expected result, actual result, and recovery time.
 
-Run these experiments with the full Docker Compose stack running and seed data loaded.
+---
+
+## Methodology
+
+Our chaos engineering practice follows the Principles of Chaos Engineering as defined by Netflix:
+
+1. **Build a hypothesis around steady-state behavior.** Define what "normal" looks like in terms of measurable outputs (request success rate, latency percentiles, cache hit ratio) before injecting failures.
+
+2. **Vary real-world events.** Simulate failures that actually happen in production: process crashes, network partitions, resource exhaustion, dependency unavailability. Do not simulate only convenient failures.
+
+3. **Run experiments in production-like environments.** All experiments run against the full Docker Compose stack with seed data loaded, under realistic traffic from k6 load tests. This is as close to production as a single-droplet deployment allows.
+
+4. **Automate experiments to run continuously.** Chaos experiments are not one-time validation. They are regression tests for resilience. See [Continuous Chaos](#continuous-chaos) below.
+
+5. **Minimize blast radius.** Start with single-component failures before testing cascading scenarios. Each experiment is designed to be safe to run repeatedly without permanent data loss (the seed script restores baseline state).
+
+### Experiment Design Template
+
+Every experiment follows this structure:
+
+| Phase | Description |
+|-------|-------------|
+| **Steady State** | Define normal metrics: request rate, error rate, p95 latency, cache hit ratio |
+| **Hypothesis** | Predict what will happen when the fault is injected |
+| **Injection** | The exact command to introduce the failure |
+| **Observation** | What to measure during the failure window |
+| **Verification** | How to confirm the system recovered |
+| **Analysis** | Compare actual behavior to hypothesis, document surprises |
+
+---
+
+## Tools Used
+
+| Tool | Purpose | How We Use It |
+|------|---------|---------------|
+| `docker kill` | Sends SIGKILL to a container process, simulating an abrupt crash with no graceful shutdown | Primary fault injection for all container failure experiments |
+| `docker compose pause` / `unpause` | Freezes a container's processes (SIGSTOP), simulating a hung process or CPU starvation | Used for latency injection and deadlock simulation |
+| `docker compose stop` | Graceful shutdown (SIGTERM), simulating a planned maintenance scenario | Used to test graceful degradation vs crash behavior |
+| `k6` | Generates realistic HTTP traffic during experiments | Runs in the background to measure impact on real requests |
+| `docker stats` | Real-time container resource monitoring | Captures CPU, memory, network I/O during experiments |
+| `curl` | Point-in-time health and endpoint checks | Validates specific behaviors during and after failure |
+| Prometheus / Grafana | Time-series metrics and visualization | Records the full timeline of each experiment for analysis |
+| `redis-cli` | Direct Redis inspection | Verifies cache state before/after experiments |
+| `psql` | Direct PostgreSQL inspection | Verifies data integrity and connection state after experiments |
 
 ---
 
@@ -23,6 +66,14 @@ docker compose ps
 ```
 
 Keep Grafana open at `http://localhost:3000` (admin / hackathon2026) to observe the dashboard during experiments.
+
+Record the steady-state baseline before each experiment:
+```bash
+# Capture baseline metrics
+curl -s 'http://localhost:9090/api/v1/query?query=sum(rate(http_requests_total[1m]))' | python3 -m json.tool
+curl -s 'http://localhost:9090/api/v1/query?query=sum(rate(http_requests_total{status=~"5.."}[1m]))/sum(rate(http_requests_total[1m]))' | python3 -m json.tool
+curl -s 'http://localhost:9090/api/v1/query?query=histogram_quantile(0.95,sum(rate(http_request_duration_seconds_bucket[1m]))by(le))' | python3 -m json.tool
+```
 
 ---
 
@@ -360,3 +411,151 @@ curl -s http://localhost/urls?per_page=1 | python3 -m json.tool
 | Kill all Flask instances | 5-15 seconds | None | Yes (Docker restart) | None |
 
 The system is designed to recover from any single-component failure automatically via Docker's `restart: unless-stopped` policy. The only data loss risk is redirect events that occur during a PostgreSQL outage while Redis is still serving cached redirects.
+
+---
+
+## Recovery Time Breakdown
+
+This table provides detailed recovery time measurements for each component, broken down by recovery phase:
+
+### Container Restart Times
+
+| Component | SIGKILL to Exit | Docker Detects | Container Starts | Process Ready | Health Check Pass | Total Recovery |
+|-----------|----------------|----------------|-----------------|---------------|-------------------|---------------|
+| Flask+Gunicorn | <1s | 1-2s | 2-4s | 3-5s | 5-10s | **5-15s** |
+| PostgreSQL | <1s | 1-2s | 2-5s | 5-15s (WAL replay) | 5-20s | **10-30s** |
+| Redis | <1s | 1-2s | 1-2s | 1-2s | 1-3s | **1-5s** |
+| Nginx | <1s | 1-2s | <1s | <1s | N/A | **1-3s** |
+| Prometheus | <1s | 1-2s | 3-8s (TSDB load) | 3-8s | N/A | **5-10s** |
+| Grafana | <1s | 1-2s | 3-8s (provisioning) | 5-10s | N/A | **5-10s** |
+| Alertmanager | <1s | 1-2s | 1-2s | 1-2s | N/A | **1-3s** |
+
+### End-to-End Recovery (from failure to first successful client request)
+
+| Failure Scenario | Client-Visible Downtime | Full Recovery (all metrics normal) |
+|------------------|-------------------------|-----------------------------------|
+| Kill 1 of 3 Flask instances | 0-2s (in-flight requests only) | 5-15s |
+| Kill all 3 Flask instances | 5-15s | 15-20s |
+| Kill Redis | 0s (graceful degradation) | 1-5s (restart) + 300s (cache warm-up) |
+| Kill PostgreSQL | 10-30s (DB-dependent ops) | 10-30s (restart) + 60-300s (cache repopulation) |
+| Kill Nginx | 1-3s | 1-3s |
+| Kill PostgreSQL + Redis | 10-30s | 10-30s (DB restart) + 300s (cache rebuild) |
+
+### Recovery Phase Definitions
+
+- **SIGKILL to Exit:** Time from signal delivery to process termination.
+- **Docker Detects:** Time for Docker to notice the container exited (health check interval or process monitor).
+- **Container Starts:** Time to pull/create the container and start the entrypoint process.
+- **Process Ready:** Time for the internal process to initialize (database WAL replay, Gunicorn worker fork, Prometheus TSDB load).
+- **Health Check Pass:** Time for the Docker `HEALTHCHECK` to report healthy, allowing dependent containers to proceed.
+
+---
+
+## Continuous Chaos
+
+Chaos experiments should not be run once and forgotten. The system's resilience properties must be continuously validated as code changes.
+
+### Automated Chaos Test Script
+
+Create a script that runs the full chaos suite and reports pass/fail:
+
+```bash
+#!/bin/bash
+# chaos-suite.sh -- Run all chaos experiments and validate recovery
+# Usage: ./chaos-suite.sh [http://target-host]
+
+BASE_URL="${1:-http://localhost}"
+PASS=0
+FAIL=0
+
+check_health() {
+    local max_wait=$1
+    for i in $(seq 1 "$max_wait"); do
+        STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/health")
+        if [ "$STATUS" = "200" ]; then
+            echo "  Recovered after ${i}s"
+            return 0
+        fi
+        sleep 1
+    done
+    echo "  FAILED: did not recover within ${max_wait}s"
+    return 1
+}
+
+echo "=== Chaos Suite: $(date) ==="
+echo ""
+
+# Test 1: Kill single Flask instance
+echo "[1/5] Kill single Flask instance..."
+docker kill "$(docker compose ps -q app2)" > /dev/null 2>&1
+if check_health 20; then ((PASS++)); else ((FAIL++)); fi
+sleep 5
+
+# Test 2: Kill Redis
+echo "[2/5] Kill Redis..."
+docker kill "$(docker compose ps -q redis)" > /dev/null 2>&1
+if check_health 10; then ((PASS++)); else ((FAIL++)); fi
+sleep 5
+
+# Test 3: Kill PostgreSQL
+echo "[3/5] Kill PostgreSQL..."
+docker kill "$(docker compose ps -q db)" > /dev/null 2>&1
+if check_health 45; then ((PASS++)); else ((FAIL++)); fi
+sleep 10
+
+# Test 4: Kill all Flask instances
+echo "[4/5] Kill all Flask instances..."
+docker kill "$(docker compose ps -q app1)" "$(docker compose ps -q app2)" "$(docker compose ps -q app3)" > /dev/null 2>&1
+if check_health 30; then ((PASS++)); else ((FAIL++)); fi
+sleep 5
+
+# Test 5: Verify data integrity
+echo "[5/5] Data integrity check..."
+USER_COUNT=$(curl -s "$BASE_URL/users?per_page=1" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))" 2>/dev/null)
+if [ "$USER_COUNT" = "1" ]; then
+    echo "  Data intact"
+    ((PASS++))
+else
+    echo "  FAILED: data check returned unexpected result"
+    ((FAIL++))
+fi
+
+echo ""
+echo "=== Results: ${PASS} passed, ${FAIL} failed ==="
+exit "$FAIL"
+```
+
+### Integration with CI/CD
+
+Add chaos tests as a post-deployment verification step:
+
+```yaml
+# In a deployment workflow
+- name: Run chaos suite
+  run: |
+    # Wait for deployment to stabilize
+    sleep 30
+    # Run chaos experiments against the deployed stack
+    bash chaos-suite.sh http://localhost
+```
+
+### Chaos Testing Schedule
+
+| Frequency | What to Run | Why |
+|-----------|-------------|-----|
+| Every deployment | Kill 1 Flask instance + health check recovery | Validates that new code does not break restart behavior |
+| Weekly | Full chaos suite (all 5 experiments) | Regression test for all resilience properties |
+| Before load tests | Kill Redis + verify graceful degradation | Confirms fallback path works before stressing the system |
+| After infrastructure changes | Full suite + Gold-tier load test during chaos | Validates that scaling changes did not introduce failure modes |
+
+### Chaos Maturity Model
+
+Our current chaos engineering practice and next steps:
+
+| Level | Description | Status |
+|-------|-------------|--------|
+| Level 0: No chaos | No failure testing | Completed |
+| Level 1: Manual experiments | Run experiments by hand, document results | **Current** |
+| Level 2: Automated suite | Scripted chaos tests in CI/CD | Ready to implement |
+| Level 3: Continuous chaos | Random failure injection in staging | Future |
+| Level 4: Production chaos | Controlled failure injection in production | Future (requires multi-node) |
