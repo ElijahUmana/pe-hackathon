@@ -2,6 +2,15 @@
 
 Maps directly to the MLH submission form fields. Each section includes links to evidence files and notes for the submission text fields.
 
+## Evidence Format
+
+This directory contains two types of evidence:
+
+- **PNG screenshots** — Visual captures taken directly from the live production system (Grafana dashboard, Discord alerts, GitHub Actions, terminal output). These are the primary visual proof for judges.
+- **TXT files** — Raw terminal output captured directly from production commands (`k6 run`, `docker compose ps`, `curl`, `pytest`). These provide the complete, unedited output that judges can verify against the live system. Raw output is preserved as-is to maintain authenticity.
+
+Full k6 load test results (raw terminal output) are stored in `evidence/scalability/` to keep them separate from visual screenshots.
+
 ## Live Endpoints
 
 | Service | URL |
