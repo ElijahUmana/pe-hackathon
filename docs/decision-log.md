@@ -66,7 +66,7 @@ This document records the rationale behind major technology and design choices.
 **Rationale:**
 - Redirect is the highest-traffic operation (70-80% of load test traffic). Caching the URL lookup eliminates the SELECT query on repeated accesses.
 - Redis operates in-memory with sub-millisecond response times, making it ideal for this hot path.
-- A 300-second TTL balances freshness (URL updates/deletions are reflected within 5 minutes) against cache efficiency.
+- A 600-second TTL balances freshness (URL updates/deletions are reflected within 10 minutes) against cache efficiency. The longer TTL, combined with full warm-up of all active URLs on startup, achieves 95%+ hit ratio.
 - Explicit cache invalidation on UPDATE and DELETE operations ensures immediate consistency for administrative actions.
 - Graceful degradation: if Redis is unavailable, the application falls back to PostgreSQL with no code changes. All Redis calls are wrapped in try/except blocks.
 

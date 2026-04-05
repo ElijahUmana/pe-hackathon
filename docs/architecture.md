@@ -21,7 +21,7 @@ graph TB
 
     subgraph "Data Layer"
         PG[(PostgreSQL 16<br/>Primary Store)]
-        Redis[(Redis 7<br/>Cache, 300s TTL)]
+        Redis[(Redis 7<br/>Cache, 600s TTL)]
     end
 
     subgraph "Observability"
@@ -331,7 +331,7 @@ Redis is used as a read-through cache for the redirect hot path.
 
 | Operation | Cache Action |
 |---|---|
-| `GET /:short_code` (miss) | Set cache with 300s TTL |
+| `GET /:short_code` (miss) | Set cache with 600s TTL |
 | `GET /:short_code` (hit) | Read from cache, skip DB lookup |
 | `PUT /urls/:id` | Delete cache key for the short code |
 | `DELETE /urls/:id` | Delete cache key for the short code |
@@ -479,7 +479,7 @@ Request Flow for GET /:short_code
      |
      +-- MISS: Query PostgreSQL (~5-20ms)
                |
-               +-- FOUND: Cache in Redis (SETEX, 300s TTL)
+               +-- FOUND: Cache in Redis (SETEX, 600s TTL)
                |          Log event to PostgreSQL
                |          Total: ~20-50ms
                |
@@ -492,10 +492,11 @@ Request Flow for GET /:short_code
 
 **Cache value:** A JSON string (~150-300 bytes) containing `original_url`, `url_id`, and `user_id`. The `url_id` and `user_id` are included so the redirect event can be logged without a database read.
 
-**Why 300-second TTL:**
-- Short enough that URL updates/deletions are reflected within 5 minutes (even if cache invalidation fails)
-- Long enough that repeated redirects to the same URL within a burst hit the cache
+**Why 600-second TTL:**
+- Short enough that URL updates/deletions are reflected within 10 minutes (even if cache invalidation fails)
+- Long enough to maintain a 95%+ hit ratio under sustained load
 - Combined with explicit invalidation on PUT/DELETE, staleness is minimal in practice
+- All active URLs are pre-warmed into Redis on startup using pipelined writes
 
 **Graceful degradation:** If Redis is unreachable, the `get_redis()` helper returns `None` and all cache operations are skipped. The application falls back to PostgreSQL with zero code path changes -- the same `try/except` blocks that handle cache misses also handle Redis unavailability.
 

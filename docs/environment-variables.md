@@ -77,7 +77,7 @@ These are set in `.github/workflows/ci.yml` for the test job.
 | Grafana datasource | Config file | `grafana/provisioning/datasources/prometheus.yml` |
 | Grafana dashboard | Config file | `grafana/dashboards/url-shortener.json` |
 | Gunicorn workers | Dockerfile CMD | `Dockerfile` |
-| Redis cache TTL | Application code | `app/routes/urls.py` (hardcoded 300s) |
+| Redis cache TTL | Application code | `app/cache.py` (CACHE_TTL = 600s) |
 | Short code length | Application code | `app/utils/short_code.py` (hardcoded 6) |
 | Pagination defaults | Application code | Route handlers (hardcoded 25/100) |
 

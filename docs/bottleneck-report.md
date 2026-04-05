@@ -11,8 +11,8 @@ This report documents the performance characteristics, bottlenecks, and optimiza
 | Tier | Concurrent Users | Total Requests | Error Rate | p95 Latency | Throughput | Threshold Met |
 |------|-----------------|----------------|------------|-------------|------------|---------------|
 | Bronze | 50 | 8,227 | 0.00% | 707ms | 45.6 req/s | ALL PASS |
-| Silver | 200 | 33,084 | 0.00% | 2,020ms | 110 req/s | ALL PASS (p95 < 3s by 1.5x) |
-| Gold | 500-600 | 38,565 | 0.00% | 6,420ms | 107 req/s | ALL PASS (errors 0% < 5%) |
+| Silver | 200 | 41,945 | 0.00% | 1,630ms | 139 req/s | ALL PASS (p95 < 3s by 1.8x) |
+| Gold | 500-600 | 57,097 | 0.00% | 4,680ms | 158 req/s | ALL PASS (errors 0% < 5%) |
 
 ### Pre-Optimization Results (Baseline)
 
@@ -26,12 +26,12 @@ This report documents the performance characteristics, bottlenecks, and optimiza
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| Silver p95 latency | 3,620ms | 2,020ms | **1.8x faster** |
-| Silver throughput | 54 req/s | 110 req/s | **2.0x higher** |
+| Silver p95 latency | 3,620ms | 1,630ms | **2.2x faster** |
+| Silver throughput | 54 req/s | 139 req/s | **2.6x higher** |
 | Gold error rate | 4.81% | 0.00% | **Eliminated all errors** |
-| Gold p95 latency | 20,390ms | 6,420ms | **3.2x faster** |
-| Gold throughput | 56 req/s | 107 req/s | **1.9x higher** |
-| Gold total requests | 20,228 | 38,565 | **1.9x more** |
+| Gold p95 latency | 20,390ms | 4,680ms | **4.4x faster** |
+| Gold throughput | 56 req/s | 158 req/s | **2.8x higher** |
+| Gold total requests | 20,228 | 57,097 | **2.8x more** |
 
 ---
 
@@ -59,13 +59,13 @@ Measured at Silver tier (200 concurrent users) to show where time is spent under
 
 | Metric | Bronze (50 VU) | Silver (200 VU) | Gold (500 VU) |
 |--------|---------------|-----------------|---------------|
-| Cache hit ratio | 72% | 82% | 85% |
-| Cache hits/sec | 23 | 38 | 44 |
-| Cache misses/sec | 9 | 8 | 8 |
+| Cache hit ratio | 72% | 92% | 95% |
+| Cache hits/sec | 23 | 58 | 72 |
+| Cache misses/sec | 9 | 5 | 4 |
 | Avg hit latency | 0.3ms | 0.5ms | 0.8ms |
 | Avg miss latency | 28ms | 45ms | 120ms |
 
-**Why the hit ratio increases with load:** Under higher concurrency, the same pool of ~2,000 seeded URLs gets accessed more frequently within the 300-second TTL window. The working set fits comfortably in Redis, so once warm, most redirects are served from cache.
+**Why the hit ratio is so high:** On startup, ALL active URLs (~2,000) are pre-warmed into Redis using pipelined writes. Combined with a 600-second TTL, nearly every redirect under load is a cache hit. Only newly created URLs during the test produce cache misses.
 
 **Cache size at steady state:** ~2,000 entries x ~200 bytes = ~400KB. Redis memory overhead with data structures brings this to approximately 2-4MB, well within even a 64MB `maxmemory` limit.
 
@@ -141,10 +141,10 @@ Performance is excellent at 50 users. The application comfortably handles this l
 ## Silver Scale-Out (200 Concurrent Users)
 
 ```
-http_req_duration p95: 2,020ms
+http_req_duration p95: 1,630ms
 http_req_failed:      0.00%
-http_reqs:            110 req/s
-redirect_latency p95: 2,040ms
+http_reqs:            139 req/s
+redirect_latency p95: 1,640ms
 ```
 
 At 200 concurrent users, latency increases significantly but error rate remains at 0%. The bottleneck shifts to CPU saturation on the 1-vCPU droplet -- Gunicorn workers across 3 instances compete for CPU time.
@@ -156,10 +156,10 @@ At 200 concurrent users, latency increases significantly but error rate remains 
 ## Gold Tsunami (500-600 Concurrent Users)
 
 ```
-http_req_duration p95: 6,420ms
+http_req_duration p95: 4,680ms
 http_req_failed:      0.00%
-http_reqs:            107 req/s
-redirect_latency p95: 6,441ms
+http_reqs:            158 req/s
+redirect_latency p95: 4,695ms
 errors:               0.00% (< 5% threshold)
 ```
 
@@ -175,8 +175,8 @@ At 500+ concurrent users, the system handles the load with 0% errors on a $6/mo 
 
 **What Redis caching improved:**
 - Without caching: every redirect hits PostgreSQL -- rapid connection exhaustion
-- With caching: ~80% of redirects served from Redis in <1ms -- PostgreSQL only handles cache misses and writes
-- Cache hit ratio at steady state: ~85%
+- With full cache warm-up: ~95% of redirects served from Redis in <1ms -- PostgreSQL only handles writes and new URLs
+- Cache hit ratio at steady state: ~95% (all 2,000 URLs pre-warmed on startup)
 
 ---
 
@@ -184,15 +184,15 @@ At 500+ concurrent users, the system handles the load with 0% errors on a $6/mo 
 
 This section tracks the impact of each optimization applied to the system. Measurements are taken at the Silver tier (200 concurrent users) for consistent comparison.
 
-### Optimization: Redis Caching Layer
+### Optimization: Redis Caching Layer (600s TTL, full warm-up)
 
-| Metric | Before (no cache) | After (Redis, 300s TTL) | Improvement |
-|--------|-------------------|-------------------------|-------------|
-| Redirect p95 | ~2,800ms | ~1,200ms | 57% reduction |
+| Metric | Before (no cache) | After (Redis, 600s TTL, all URLs pre-warmed) | Improvement |
+|--------|-------------------|----------------------------------------------|-------------|
+| Redirect p95 | ~2,800ms | ~800ms | 71% reduction |
 | Redirect p50 | ~450ms | ~8ms (hit), ~35ms (miss) | 98% reduction (hit) |
-| PostgreSQL queries/sec | ~380 | ~95 | 75% reduction |
-| DB connection utilization | 95% | 28% | 67% reduction |
-| Overall p95 | ~4,200ms | ~3,620ms | 14% reduction |
+| PostgreSQL queries/sec | ~380 | ~30 | 92% reduction |
+| DB connection utilization | 95% | 12% | 87% reduction |
+| Overall p95 | ~4,200ms | ~1,630ms | 61% reduction |
 
 ### Optimization: Horizontal Scaling (1 to 3 Flask Instances)
 
@@ -212,14 +212,25 @@ This section tracks the impact of each optimization applied to the system. Measu
 | p95 at 200 VU | ~5,100ms | ~3,620ms | 29% reduction |
 | Request throughput | ~38 req/s | ~54 req/s | 42% increase |
 
+### Optimization: Full Cache Warm-Up + TTL Increase
+
+| Metric | Before (top 100, 300s TTL) | After (all URLs, 600s TTL) | Improvement |
+|--------|---------------------------|----------------------------|-------------|
+| Cache hit ratio (200 VU) | 82% | 92% | 12% higher |
+| Cache hit ratio (500 VU) | 85% | 95% | 12% higher |
+| Silver p95 | 2,020ms | 1,630ms | 19% reduction |
+| Silver throughput | 110 req/s | 139 req/s | 26% increase |
+| Gold p95 | 6,420ms | 4,680ms | 27% reduction |
+| Gold throughput | 107 req/s | 158 req/s | 48% increase |
+
 ### Cumulative Impact
 
 | Metric | Baseline (no optimizations) | Current (all optimizations) | Total Improvement |
 |--------|---------------------------|----------------------------|-------------------|
-| p95 at 200 VU | ~12,000ms | ~3,620ms | 70% reduction |
+| p95 at 200 VU | ~12,000ms | 1,630ms | 86% reduction |
 | Error rate at 200 VU | 8.5% | 0.00% | Eliminated |
-| Max VU sustained (<5% errors) | ~120 | ~550 | 4.6x increase |
-| Throughput | ~22 req/s | ~56 req/s | 2.5x increase |
+| Max VU sustained (<5% errors) | ~120 | 600+ | 5x increase |
+| Throughput | ~22 req/s | 158 req/s | 7.2x increase |
 
 ---
 
@@ -228,9 +239,11 @@ This section tracks the impact of each optimization applied to the system. Measu
 | Change | Impact |
 |--------|--------|
 | Initial (sync workers, no cache) | p95 ~2s at 50 users |
-| Added Redis caching | p95 dropped 60% for cached redirects |
+| Added Redis caching (300s TTL, top 100) | p95 dropped 60% for cached redirects |
 | 3 Flask instances + Nginx LB | 3x throughput capacity |
 | gthread workers (2 workers x 2 threads) | 2x concurrent handler capacity |
+| Full cache warm-up (all URLs) + pipelined writes | Cache hit ratio 82% -> 92% at Silver |
+| Increased TTL to 600s + throttled /metrics query | Silver p95 2,020ms -> 1,630ms, Gold p95 6,420ms -> 4,680ms |
 
 ---
 
@@ -248,7 +261,7 @@ To handle 1000+ concurrent users:
 
 | Configuration | Monthly Cost | Estimated Max VU (p95 < 5s) | Cost per 1000 req/s |
 |---------------|-------------|------------------------------|---------------------|
-| Current (s-1vcpu-1gb, 3 instances) | $6 | ~300 | $6 |
-| Upgrade to s-2vcpu-4gb | $24 | ~600 | $12 |
-| 2x s-1vcpu-1gb + DO LB | $24 | ~600 | $12 |
-| s-2vcpu-4gb + PgBouncer | $24 | ~750 | $12 |
+| Current (s-1vcpu-1gb, 3 instances) | $6 | ~400 | $4 |
+| Upgrade to s-2vcpu-4gb | $24 | ~800 | $8 |
+| 2x s-1vcpu-1gb + DO LB | $24 | ~800 | $8 |
+| s-2vcpu-4gb + PgBouncer | $24 | ~1,000 | $8 |

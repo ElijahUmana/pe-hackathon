@@ -37,7 +37,7 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
      | PostgreSQL |                          |    Redis     |
      |  16-alpine |                          |  7-alpine    |
      |  (primary  |                          |  (cache,     |
-     |   store)   |                          |   300s TTL)  |
+     |   store)   |                          |   600s TTL)  |
      +------------+                          +--------------+
 
      +-------------------+    +------------+    +--------------+
@@ -62,7 +62,7 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 | WSGI Server | Gunicorn 23 | Production server, 2 workers x 2 threads per instance |
 | ORM | Peewee 3.17 | Database models, queries, migrations |
 | Database | PostgreSQL 16 | Primary data store |
-| Cache | Redis 7 | Redirect lookup cache (300s TTL) |
+| Cache | Redis 7 | Redirect lookup cache (600s TTL) |
 | Load Balancer | Nginx (alpine) | Least-connection routing across 3 instances |
 | Metrics | Prometheus + prometheus_client | Scraping, time-series storage |
 | Dashboards | Grafana | Real-time visualization |
@@ -94,13 +94,13 @@ Tested on a DigitalOcean s-1vcpu-1gb droplet (1 vCPU, 1 GB RAM + 2 GB swap, $6/m
 | Tier | Concurrent Users | p95 Latency | Error Rate | Throughput | Status |
 |------|-----------------|-------------|------------|------------|--------|
 | Bronze | 50 | 707ms | 0.00% | 45.6 req/s | **PASS** |
-| Silver | 200 | 2,020ms | 0.00% | 110 req/s | **PASS** |
-| Gold | 500-600 | 6,420ms | 0.00% | 107 req/s | **PASS** |
+| Silver | 200 | 1,630ms | 0.00% | 139 req/s | **PASS** |
+| Gold | 500-600 | 4,680ms | 0.00% | 158 req/s | **PASS** |
 
 **Key metrics:**
 - Redirect latency (cache hit): **5-15ms** p50
-- Cache hit ratio under load: **85%**
-- Throughput: **107 req/s** sustained at 500+ concurrent users
+- Cache hit ratio under load: **95%** (all URLs pre-warmed on startup)
+- Throughput: **158 req/s** sustained at 600 concurrent users
 - Auto-recovery from container crashes: **5-15 seconds**
 - Cost: **$6/month** ($0.02/million requests)
 

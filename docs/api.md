@@ -646,7 +646,7 @@ The `X-Cache` header indicates whether the URL was served from Redis cache (`HIT
 1. Check Redis cache for `url:{short_code}`
 2. On cache hit: redirect immediately, log redirect event
 3. On cache miss: query PostgreSQL for an active URL with this short code
-4. If found: cache the result in Redis with 300-second TTL, log redirect event, redirect
+4. If found: cache the result in Redis with 600-second TTL, log redirect event, redirect
 5. If not found (or inactive): return 404, no event logged
 
 A `redirect` event is always recorded for successful redirects, capturing the client IP and User-Agent.

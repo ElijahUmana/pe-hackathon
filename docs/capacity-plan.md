@@ -67,7 +67,7 @@ Each Flask instance runs 2 Gunicorn `gthread` workers with 2 threads each, provi
 
 **3-instance cluster theoretical max:** ~960 req/s (theoretical, limited by CPU before reaching this)
 
-**Observed cluster throughput:** ~107 req/s sustained at 500 VU (CPU-bound)
+**Observed cluster throughput:** ~158 req/s sustained at 600 VU (CPU-bound)
 
 ### Realistic Throughput
 
@@ -76,8 +76,8 @@ With the hackathon's traffic mix (70% redirects, 15% reads, 10% creates, 5% heal
 | Tier | Concurrent Users | Observed req/s | p95 Latency | Error Rate | Status |
 |---|---|---|---|---|---|
 | Bronze | 50 | 45.6 | 707ms | 0.00% | **PASS** |
-| Silver | 200 | 110 | 2,020ms | 0.00% | **PASS** (p95 < 3s by 1.5x) |
-| Gold | 500-600 | 107 | 6,420ms | 0.00% | **PASS** (errors 0% < 5%) |
+| Silver | 200 | 139 | 1,630ms | 0.00% | **PASS** (p95 < 3s by 1.8x) |
+| Gold | 500-600 | 158 | 4,680ms | 0.00% | **PASS** (errors 0% < 5%) |
 
 ---
 
@@ -89,12 +89,12 @@ Projected performance based on observed data, scaling linearly with CPU (primary
 
 | Droplet | vCPUs | RAM | Projected Max VU (p95 < 5s) | Projected Throughput | Monthly Cost |
 |---|---|---|---|---|---|
-| **s-1vcpu-1gb** (current) | **1** | **1 GB** | **~300** | **~107 req/s** | **$6** |
-| s-1vcpu-2gb | 1 | 2 GB | ~350 | ~120 req/s | $12 |
-| s-2vcpu-2gb | 2 | 2 GB | ~600 | ~228 req/s | $18 |
-| s-2vcpu-4gb | 2 | 4 GB | ~700 | ~232 req/s | $24 |
-| s-4vcpu-8gb | 4 | 8 GB | ~1,400 | ~460 req/s | $48 |
-| s-8vcpu-16gb | 8 | 16 GB | ~2,800 | ~920 req/s | $96 |
+| **s-1vcpu-1gb** (current) | **1** | **1 GB** | **~400** | **~158 req/s** | **$6** |
+| s-1vcpu-2gb | 1 | 2 GB | ~450 | ~175 req/s | $12 |
+| s-2vcpu-2gb | 2 | 2 GB | ~800 | ~320 req/s | $18 |
+| s-2vcpu-4gb | 2 | 4 GB | ~900 | ~340 req/s | $24 |
+| s-4vcpu-8gb | 4 | 8 GB | ~1,800 | ~640 req/s | $48 |
+| s-8vcpu-16gb | 8 | 16 GB | ~3,600 | ~1,280 req/s | $96 |
 
 ### Horizontal Scaling Projections
 
@@ -102,10 +102,10 @@ Adding Flask instances on the same droplet (limited by CPU):
 
 | Configuration | Instances | Handlers | Projected Max VU | Bottleneck |
 |---|---|---|---|---|
-| 2 instances x 2w x 2t | 2 | 8 | ~200 | CPU |
-| **3 instances x 2w x 2t** (current) | **3** | **12** | **~300** | **CPU** |
-| 4 instances x 2w x 2t | 4 | 16 | ~300 (no improvement) | CPU saturated |
-| 5 instances x 2w x 2t | 5 | 20 | ~300 (no improvement) | CPU saturated |
+| 2 instances x 2w x 2t | 2 | 8 | ~280 | CPU |
+| **3 instances x 2w x 2t** (current) | **3** | **12** | **~400** | **CPU** |
+| 4 instances x 2w x 2t | 4 | 16 | ~400 (no improvement) | CPU saturated |
+| 5 instances x 2w x 2t | 5 | 20 | ~400 (no improvement) | CPU saturated |
 
 Adding instances beyond 3 on a 1-vCPU machine yields no improvement because CPU is already the bottleneck. The additional instances just add memory and context-switching overhead.
 
@@ -113,10 +113,10 @@ Adding instances beyond 3 on a 1-vCPU machine yields no improvement because CPU 
 
 | Configuration | Total vCPUs | Nodes | Projected Max VU | Monthly Cost |
 |---|---|---|---|---|
-| 1x s-1vcpu-1gb (current) | 1 | 1 | ~300 | $6 |
-| 2x s-1vcpu-1gb + DO LB | 2 | 2 | ~600 | $24 ($12 + $12 LB) |
-| 3x s-1vcpu-1gb + DO LB | 3 | 3 | ~900 | $30 ($18 + $12 LB) |
-| 1x s-2vcpu-4gb + managed DB | 2 | 1 | ~750 | $39 ($24 + $15 DB) |
+| 1x s-1vcpu-1gb (current) | 1 | 1 | ~400 | $6 |
+| 2x s-1vcpu-1gb + DO LB | 2 | 2 | ~800 | $24 ($12 + $12 LB) |
+| 3x s-1vcpu-1gb + DO LB | 3 | 3 | ~1,200 | $30 ($18 + $12 LB) |
+| 1x s-2vcpu-4gb + managed DB | 2 | 1 | ~900 | $39 ($24 + $15 DB) |
 
 ---
 
@@ -126,10 +126,10 @@ Adding instances beyond 3 on a 1-vCPU machine yields no improvement because CPU 
 |---|---|---|
 | Monthly cost | s-1vcpu-1gb droplet | $6 |
 | Seconds in a month | 30 x 24 x 3600 | 2,592,000 |
-| Observed throughput | 107 req/s sustained | -- |
-| Max requests/month (sustained load) | 107 x 2,592,000 | 277,344,000 |
-| Cost per million requests | $6 / 277.34 | **$0.02** |
-| Cost per request | $6 / 277,344,000 | **$0.000000022** |
+| Observed throughput | 158 req/s sustained | -- |
+| Max requests/month (sustained load) | 158 x 2,592,000 | 409,536,000 |
+| Cost per million requests | $6 / 409.54 | **$0.015** |
+| Cost per request | $6 / 409,536,000 | **$0.000000015** |
 
 At realistic (non-continuous) traffic patterns:
 
@@ -138,9 +138,9 @@ At realistic (non-continuous) traffic patterns:
 | Low (1 req/s avg) | 2.6M | $6 | $2.31 |
 | Medium (10 req/s avg) | 26M | $6 | $0.23 |
 | High (100 req/s sustained) | 259M | $6 | $0.02 |
-| Peak (107 req/s saturated) | 277M | $6 | $0.02 |
+| Peak (158 req/s saturated) | 410M | $6 | $0.015 |
 
-The application delivers exceptional cost efficiency. At $0.02 per million requests on a $6/mo droplet, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
+The application delivers exceptional cost efficiency. At $0.015 per million requests on a $6/mo droplet, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
 
 ---
 
@@ -213,11 +213,11 @@ Every redirect writes an event row. Under Gold-tier load (500 VUs, ~80% redirect
 - PostgreSQL on SSD can handle ~5,000-10,000 simple INSERTs per second
 - The events table has no complex indexes, so insert performance is good
 
-**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~107 req/s total, this limit is far away.
+**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~158 req/s total, this limit is far away.
 
 ### 4. Redis Memory
 
-Each cached URL entry is approximately 150-300 bytes. With a 300-second TTL:
+Each cached URL entry is approximately 150-300 bytes. With a 600-second TTL and full warm-up:
 
 | Active URLs in Cache | Memory Usage |
 |---|---|
