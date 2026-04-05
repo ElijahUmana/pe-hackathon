@@ -1,0 +1,231 @@
+# Technical Decision Log
+
+This document records the rationale behind major technology and design choices.
+
+---
+
+## DEC-001: Flask as the Web Framework
+
+**Decision:** Use Flask as the HTTP framework.
+
+**Context:** The MLH PE Hackathon provided a starter template built on Flask + Peewee + PostgreSQL. The template included the app factory pattern, database proxy setup, and project structure.
+
+**Rationale:**
+- The hackathon template was Flask-based, and switching frameworks would mean rebuilding all scaffolding from scratch with no benefit.
+- Flask is lightweight and minimal -- it provides routing, request/response handling, and blueprints without imposing opinions on database access, serialization, or project layout.
+- The blueprint system maps naturally to the three resource types (users, urls, events), keeping route files small and focused.
+- Flask's ecosystem provides everything needed: `flask.jsonify` for JSON responses, `flask.redirect` for the core redirect operation, `flask.Blueprint` for modular routing.
+
+**Tradeoffs:**
+- No built-in async support (not needed for this workload since Gunicorn handles concurrency at the process level).
+- No built-in request validation (handled manually with explicit checks in route handlers).
+
+---
+
+## DEC-002: Peewee ORM
+
+**Decision:** Use Peewee as the ORM layer.
+
+**Context:** The hackathon template used Peewee with a `DatabaseProxy` pattern for deferred database initialization.
+
+**Rationale:**
+- Required by the template. Peewee is lightweight (single file), which fits the hackathon's constraints.
+- The `DatabaseProxy` pattern allows the app factory to configure the database at runtime, supporting both PostgreSQL (production) and SQLite (testing).
+- `playhouse.shortcuts.model_to_dict` provides zero-config serialization of model instances to dictionaries, which pair directly with `flask.jsonify`.
+- Peewee's query builder is expressive enough for our needs: filtering, pagination, aggregation, and foreign key traversal.
+
+**Tradeoffs:**
+- Peewee is not async-capable, but this is irrelevant since we use synchronous Gunicorn workers.
+- Migration tooling is less mature than Alembic (SQLAlchemy). For this project, we use `create_tables(safe=True)` and the seed script for schema management.
+
+---
+
+## DEC-003: PostgreSQL
+
+**Decision:** Use PostgreSQL 16 as the primary data store.
+
+**Context:** The hackathon template specified PostgreSQL. The seed data was provided as CSV files designed for PostgreSQL.
+
+**Rationale:**
+- Required by the template.
+- PostgreSQL handles concurrent writes well (MVCC), which matters with 3 app instances writing events simultaneously.
+- UNIQUE constraints on `username`, `email`, and `short_code` are enforced at the database level, preventing duplicates regardless of which app instance handles the request.
+- The `pg_isready` health check integrates with Docker Compose's `healthcheck` directive, ensuring app containers only start after the database is accepting connections.
+
+**Tradeoffs:**
+- Heavier than SQLite for development. Mitigated by using SQLite in-memory for unit tests via the `DatabaseProxy` pattern.
+
+---
+
+## DEC-004: Redis for Caching
+
+**Decision:** Use Redis as a read-through cache for URL redirect lookups.
+
+**Context:** The hackathon performance tiers require sub-3-second p95 latency under load. Without caching, every redirect requires a PostgreSQL query plus an event INSERT, adding significant latency under high concurrency.
+
+**Rationale:**
+- Redirect is the highest-traffic operation (70-80% of load test traffic). Caching the URL lookup eliminates the SELECT query on repeated accesses.
+- Redis operates in-memory with sub-millisecond response times, making it ideal for this hot path.
+- A 300-second TTL balances freshness (URL updates/deletions are reflected within 5 minutes) against cache efficiency.
+- Explicit cache invalidation on UPDATE and DELETE operations ensures immediate consistency for administrative actions.
+- Graceful degradation: if Redis is unavailable, the application falls back to PostgreSQL with no code changes. All Redis calls are wrapped in try/except blocks.
+
+**Cache key design:** `url:{short_code}` -- simple, predictable, easy to debug with `redis-cli`.
+
+**Tradeoffs:**
+- Redirect events are still written to PostgreSQL on every access (even cache hits), so the database is still in the write path.
+- Stale reads are possible within the TTL window if a URL is updated through a mechanism that bypasses cache invalidation (there is no such mechanism currently, but the risk exists).
+
+---
+
+## DEC-005: Nginx for Load Balancing
+
+**Decision:** Use Nginx as a reverse proxy and load balancer in front of 3 Flask instances.
+
+**Context:** The hackathon requires demonstrating horizontal scaling. A single Flask+Gunicorn instance can be vertically scaled (more workers), but horizontal scaling requires a load balancer.
+
+**Rationale:**
+- Nginx is the industry standard for reverse proxying Python WSGI applications.
+- The `least_conn` algorithm distributes requests to the server with the fewest active connections, naturally handling variance in request processing time (cache hits are faster than misses).
+- Nginx handles HTTP parsing and connection management, offloading this from Gunicorn.
+- Structured JSON access logs from Nginx provide request-level observability at the edge.
+- The `/nginx-health` and `/nginx-status` endpoints provide load balancer health and connection metrics without hitting the upstream Flask servers.
+
+**Tradeoffs:**
+- Adds another container and configuration file to maintain.
+- No automatic failover configuration (Nginx will retry on upstream errors by default, but does not remove dead backends from the pool). For this project, Docker's restart policy handles backend recovery.
+
+---
+
+## DEC-006: Docker Compose for Orchestration
+
+**Decision:** Use Docker Compose to orchestrate all 9 services.
+
+**Context:** The hackathon requires deploying to a single DigitalOcean droplet. The system includes 9 components that need to start in a specific order with health check dependencies.
+
+**Rationale:**
+- Docker Compose handles service dependency ordering via `depends_on` with `condition: service_healthy`, ensuring Flask instances don't start until PostgreSQL and Redis are ready.
+- The `restart: unless-stopped` policy provides automatic recovery for chaos engineering scenarios (killing containers to demonstrate resilience).
+- Named volumes (`postgres_data`, `prometheus_data`, `grafana_data`) persist data across container restarts and redeployments.
+- All 9 services are defined in a single `docker-compose.yml` file, making the entire system reproducible with a single `docker compose up`.
+
+**Tradeoffs:**
+- Docker Compose runs on a single host, so there is no cross-node redundancy. The database is a single point of failure.
+- No rolling deployments -- `docker compose up --build -d` rebuilds and restarts all changed services simultaneously.
+
+---
+
+## DEC-007: Gunicorn as the WSGI Server
+
+**Decision:** Use Gunicorn with 4 sync workers per instance as the production WSGI server.
+
+**Context:** Flask's built-in development server (`flask run`) is single-threaded and not suitable for production traffic.
+
+**Rationale:**
+- Gunicorn pre-forks worker processes, allowing each Flask instance to handle multiple concurrent requests.
+- 4 workers per instance, across 3 instances, provides 12 concurrent request handlers.
+- Sync workers (the default) pair well with Peewee's synchronous database access pattern.
+- The `--timeout 120` setting prevents worker starvation under sustained load.
+- `--access-logfile -` logs requests to stdout, which Docker captures and makes available via `docker compose logs`.
+
+**Tradeoffs:**
+- Sync workers block during database I/O. Under heavy write load, a worker is occupied for the full duration of the INSERT. This is acceptable given the request profile (most redirects are fast reads).
+- Memory usage scales linearly with worker count. Each worker loads a full copy of the Flask application.
+
+---
+
+## DEC-008: Prometheus + Grafana for Monitoring
+
+**Decision:** Use Prometheus for metrics collection and Grafana for visualization, with Alertmanager for alert routing.
+
+**Context:** The hackathon requires monitoring and observability. The stack needed to support custom application metrics (not just infrastructure metrics).
+
+**Rationale:**
+- Prometheus is the industry standard for application metrics in containerized environments.
+- The `prometheus_client` Python library integrates natively, providing Counters, Histograms, and Gauges with minimal code.
+- Pull-based scraping (Prometheus scrapes `/metrics` every 10 seconds) requires no push infrastructure or additional dependencies in the application.
+- Grafana provides pre-built visualization for Prometheus data with a provisioning system that allows dashboards to be version-controlled as JSON files.
+- Alertmanager routes alerts based on severity, with configurable receivers (Discord webhooks for this project).
+- 7-day data retention in Prometheus is sufficient for the hackathon evaluation period.
+
+**Tradeoffs:**
+- Three additional containers (Prometheus, Grafana, Alertmanager) consume memory on the resource-constrained droplet.
+- The Grafana dashboard JSON file is verbose (1000+ lines) but is auto-provisioned, requiring no manual setup.
+
+---
+
+## DEC-009: k6 for Load Testing
+
+**Decision:** Use k6 for load testing with three tier-specific scripts.
+
+**Context:** The hackathon defines three performance tiers: Bronze (50 concurrent users), Silver (200 concurrent users), Gold (500+ concurrent users).
+
+**Rationale:**
+- k6 was recommended by the hackathon as the load testing tool.
+- k6 scripts are written in JavaScript, making them readable and easy to modify.
+- The staged ramp-up/ramp-down pattern simulates realistic traffic growth.
+- Built-in threshold checks (`http_req_duration`, custom `errors` rate) provide pass/fail criteria aligned with hackathon requirements.
+- Custom metrics (`redirect_latency`, `create_latency`) allow per-operation analysis.
+- The traffic mix in each script reflects realistic URL shortener usage (70-80% redirects, 10-15% reads, 5-10% creates).
+
+**Test scripts:**
+- `baseline.js` (Bronze): 50 VUs, p95 < 3s, 3-minute hold
+- `scaleout.js` (Silver): 200 VUs, p95 < 3s, 3-minute hold
+- `tsunami.js` (Gold): 500 VUs ramping to 600, p95 < 5s, 3-minute hold
+
+---
+
+## DEC-010: Structured JSON Logging
+
+**Decision:** Use `python-json-logger` for structured JSON log output.
+
+**Context:** The hackathon requires machine-parseable logs. Traditional text logs are difficult to filter and aggregate.
+
+**Rationale:**
+- JSON logs can be parsed by any log aggregation tool (ELK, Loki, CloudWatch).
+- Each log entry includes a timestamp, level, logger name, and message as structured fields.
+- Request logging middleware adds method, path, status code, remote address, and user agent to every request log.
+- Nginx is also configured with a JSON log format (`json_combined`), ensuring all layers produce parseable output.
+- The `werkzeug` logger is suppressed to WARNING level to reduce noise from Flask's default request logging.
+
+**Tradeoffs:**
+- JSON logs are harder to read directly with `docker compose logs`. Use `jq` for filtering:
+  ```bash
+  docker compose logs app1 | jq '.message'
+  ```
+
+---
+
+## DEC-011: Soft Deletes for URLs
+
+**Decision:** DELETE requests on URLs set `is_active = false` rather than removing the row.
+
+**Context:** The hackathon seed data includes event history tied to URL records. Hard-deleting a URL would violate the foreign key constraint on the events table, or require cascading deletes that destroy audit history.
+
+**Rationale:**
+- Soft deletes preserve the complete audit trail. Every event (created, redirect, updated, deleted) remains queryable.
+- The redirect handler filters on `is_active = True`, so soft-deleted URLs correctly return 404.
+- The `is_active` flag can be toggled via PUT, allowing URLs to be reactivated.
+- A `deleted` event is recorded, maintaining the event log's completeness.
+
+**Tradeoffs:**
+- Soft-deleted URLs still consume database storage and appear in `GET /urls` listings (they show `is_active: false`).
+- Cache invalidation is required on soft delete to prevent stale redirects.
+
+---
+
+## DEC-012: Cryptographic Short Code Generation
+
+**Decision:** Use `secrets.choice` for short code generation instead of `random.choice` or hash-based approaches.
+
+**Context:** Short codes must be unique and unpredictable. The hackathon "Twin's Paradox" hint specifies that identical URLs must produce different short codes.
+
+**Rationale:**
+- `secrets.choice` uses the OS cryptographic random number generator, making codes unpredictable.
+- Random generation (vs. sequential or hash-based) ensures two identical URLs always get different codes.
+- 6 characters from a 62-character alphabet (a-z, A-Z, 0-9) provides 62^6 = 56.8 billion possible codes, making collisions negligible.
+- A retry loop (up to 10 attempts) handles the rare collision case by generating a new code.
+
+**Tradeoffs:**
+- No way to derive the original URL from the short code (by design).
+- Slightly more database writes on collision (statistically negligible).
