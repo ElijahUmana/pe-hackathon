@@ -33,6 +33,8 @@ def bulk_create_users():
         email = row.get("email", "").strip()
         if not username or not email or len(username) > 255 or len(email) > 255:
             continue
+        if not validate_email(email):
+            continue
         try:
             with db.atomic():
                 User.create(

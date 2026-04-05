@@ -36,13 +36,21 @@ def list_events():
         query = query.where(Event.event_type == event_type)
 
     # Filter by url_id
-    url_id_filter = request.args.get("url_id", type=int)
-    if url_id_filter is not None:
+    url_id_raw = request.args.get("url_id")
+    if url_id_raw is not None:
+        try:
+            url_id_filter = int(url_id_raw)
+        except (ValueError, TypeError):
+            return jsonify({"error": "url_id must be an integer"}), 400
         query = query.where(Event.url_id == url_id_filter)
 
     # Filter by user_id
-    user_id_filter = request.args.get("user_id", type=int)
-    if user_id_filter is not None:
+    user_id_raw = request.args.get("user_id")
+    if user_id_raw is not None:
+        try:
+            user_id_filter = int(user_id_raw)
+        except (ValueError, TypeError):
+            return jsonify({"error": "user_id must be an integer"}), 400
         query = query.where(Event.user_id == user_id_filter)
 
     events = query.paginate(page, per_page)

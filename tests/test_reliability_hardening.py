@@ -204,6 +204,34 @@ class TestEventIntegrity:
         )
         assert resp.status_code == 404
 
+    def test_events_filter_invalid_url_id_returns_400(self, client):
+        """GET /events?url_id=abc should return 400, not all events."""
+        resp = client.get("/events?url_id=abc")
+        assert resp.status_code == 400
+        assert "error" in resp.get_json()
+
+    def test_events_filter_invalid_user_id_returns_400(self, client):
+        """GET /events?user_id=abc should return 400, not all events."""
+        resp = client.get("/events?user_id=abc")
+        assert resp.status_code == 400
+        assert "error" in resp.get_json()
+
+    def test_urls_filter_invalid_user_id_returns_400(self, client):
+        """GET /urls?user_id=abc should return 400, not all URLs."""
+        resp = client.get("/urls?user_id=abc")
+        assert resp.status_code == 400
+        assert "error" in resp.get_json()
+
+    def test_events_filter_float_url_id_returns_400(self, client):
+        """GET /events?url_id=1.5 should return 400."""
+        resp = client.get("/events?url_id=1.5")
+        assert resp.status_code == 400
+
+    def test_urls_filter_float_user_id_returns_400(self, client):
+        """GET /urls?user_id=1.5 should return 400."""
+        resp = client.get("/urls?user_id=1.5")
+        assert resp.status_code == 400
+
 
 # ---------------------------------------------------------------------------
 # 3. Input Validation Edge Cases

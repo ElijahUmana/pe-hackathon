@@ -86,6 +86,27 @@ class TestBulkUploadEdgeCases:
         assert resp.status_code == 201
         assert resp.get_json()["imported"] == 1
 
+    def test_csv_with_invalid_email_skips_row(self, client):
+        """A row with an invalid email format should be skipped."""
+        csv = "username,email\nbademail_user,notanemail\n"
+        resp = _upload_csv(client, csv)
+        assert resp.status_code == 201
+        assert resp.get_json()["imported"] == 0
+
+    def test_csv_with_no_at_sign_email_skips_row(self, client):
+        """An email missing @ sign should be skipped during bulk upload."""
+        csv = "username,email\nnoatuser,justastring\n"
+        resp = _upload_csv(client, csv)
+        assert resp.status_code == 201
+        assert resp.get_json()["imported"] == 0
+
+    def test_csv_with_no_domain_dot_email_skips_row(self, client):
+        """An email with no dot in the domain should be skipped."""
+        csv = "username,email\nnodotuser,user@nodot\n"
+        resp = _upload_csv(client, csv)
+        assert resp.status_code == 201
+        assert resp.get_json()["imported"] == 0
+
 
 # ---------------------------------------------------------------------------
 # 2. URL Creation Edge Cases — Data Type Validation
