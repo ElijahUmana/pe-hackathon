@@ -44,6 +44,16 @@ These are set on the `grafana` service in `docker-compose.yml`.
 | `GF_SECURITY_ADMIN_PASSWORD` | Admin password | `admin` | No | `hackathon2026` |
 | `GF_USERS_ALLOW_SIGN_UP` | Allow self-registration | `true` | No | `false` |
 
+## Webhook Receiver Variables
+
+These are set on the `webhook-receiver` service in `docker-compose.yml`.
+
+| Variable | Description | Default | Required | Example |
+|---|---|---|---|---|
+| `DISCORD_WEBHOOK_URL` | Discord webhook URL for alert forwarding | (not set) | No | `https://discord.com/api/webhooks/...` |
+| `ALERT_LOG` | Path to the alert log file | `/var/log/alerts.log` | No | `/var/log/alerts.log` |
+| `EVIDENCE_DIR` | Directory for alert evidence JSON files | `/app/evidence` | No | `/app/evidence` |
+
 ## CI Variables
 
 These are set in `.github/workflows/ci.yml` for the test job.

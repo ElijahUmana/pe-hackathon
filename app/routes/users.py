@@ -1,13 +1,44 @@
+import csv
 import datetime
+import io
 
 from flask import Blueprint, jsonify, request
 from peewee import IntegrityError
 from playhouse.shortcuts import model_to_dict
 
+from app.database import db
 from app.models.user import User
 from app.utils.validators import validate_email
 
 users_bp = Blueprint("users", __name__)
+
+
+@users_bp.route("/users/bulk", methods=["POST"])
+def bulk_create_users():
+    if "file" not in request.files:
+        return jsonify({"error": "No file provided"}), 400
+
+    file = request.files["file"]
+    if not file.filename:
+        return jsonify({"error": "No file selected"}), 400
+
+    stream = io.StringIO(file.stream.read().decode("utf-8"))
+    reader = csv.DictReader(stream)
+
+    count = 0
+    with db.atomic():
+        for row in reader:
+            try:
+                User.create(
+                    username=row.get("username", "").strip(),
+                    email=row.get("email", "").strip(),
+                    created_at=row.get("created_at", datetime.datetime.utcnow()),
+                )
+                count += 1
+            except IntegrityError:
+                continue
+
+    return jsonify({"imported": count, "count": count}), 201
 
 
 @users_bp.route("/users", methods=["GET"])

@@ -1,7 +1,9 @@
+import datetime
 import logging
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify
+from flask.json.provider import DefaultJSONProvider
 
 from app.database import db, init_db
 from app.logging_config import setup_logging
@@ -9,10 +11,23 @@ from app.metrics import init_metrics
 from app.routes import register_routes
 
 
+class _ISOJSONProvider(DefaultJSONProvider):
+    """Serialize datetimes as ISO 8601 without timezone (YYYY-MM-DDTHH:MM:SS)."""
+
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return obj.strftime("%Y-%m-%dT%H:%M:%S")
+        if isinstance(obj, datetime.date):
+            return obj.isoformat()
+        return super().default(obj)
+
+
 def create_app(testing=False):
     load_dotenv()
 
     app = Flask(__name__)
+    app.json_provider_class = _ISOJSONProvider
+    app.json = _ISOJSONProvider(app)
     app.config["TESTING"] = testing
 
     # Structured JSON logging
@@ -55,7 +70,11 @@ def create_app(testing=False):
     def health():
         health_status = {"status": "ok"}
         try:
-            db.connect(reuse_if_open=True)
+            # Force a fresh connection and real query, not a pooled/cached one
+            from app.database import db
+
+            if db.is_closed():
+                db.connect()
             db.execute_sql("SELECT 1")
             health_status["database"] = "connected"
         except Exception:

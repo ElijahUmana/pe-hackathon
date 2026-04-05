@@ -40,7 +40,7 @@ def test_create_url_with_user(client):
     resp = _create_url(client, user_id=user["id"])
     assert resp.status_code == 201
     data = resp.get_json()
-    assert data["user_id"]["id"] == user["id"]
+    assert data["user_id"] == user["id"]
 
 
 def test_create_url_with_title(client):

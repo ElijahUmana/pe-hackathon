@@ -32,8 +32,15 @@ def list_urls():
     page = request.args.get("page", 1, type=int)
     per_page = request.args.get("per_page", 25, type=int)
     per_page = min(per_page, 100)
-    urls = URL.select().order_by(URL.id).paginate(page, per_page)
-    return jsonify([model_to_dict(u, backrefs=False) for u in urls])
+
+    query = URL.select().order_by(URL.id)
+
+    user_id_filter = request.args.get("user_id", type=int)
+    if user_id_filter is not None:
+        query = query.where(URL.user_id == user_id_filter)
+
+    urls = query.paginate(page, per_page)
+    return jsonify([model_to_dict(u, backrefs=False, recurse=False) for u in urls])
 
 
 @urls_bp.route("/urls/<int:url_id>", methods=["GET"])
@@ -42,7 +49,7 @@ def get_url(url_id):
         url = URL.get_by_id(url_id)
     except URL.DoesNotExist:
         return jsonify({"error": "URL not found"}), 404
-    return jsonify(model_to_dict(url, backrefs=False))
+    return jsonify(model_to_dict(url, backrefs=False, recurse=False))
 
 
 @urls_bp.route("/urls", methods=["POST"])
@@ -56,7 +63,8 @@ def create_url():
         return jsonify({"error": "Request body must be a JSON object"}), 400
 
     # Oracle Hint 3 (Unwitting Stranger): require url field
-    url_value = data.get("url", "")
+    # Accept both "original_url" and "url" field names for compatibility
+    url_value = data.get("original_url") or data.get("url", "")
     if isinstance(url_value, str):
         url_value = url_value.strip()
     if not url_value or not isinstance(url_value, str):
@@ -124,7 +132,7 @@ def create_url():
         extra={"short_code": short_code, "url_id": url_obj.id},
     )
 
-    return jsonify(model_to_dict(url_obj, backrefs=False)), 201
+    return jsonify(model_to_dict(url_obj, backrefs=False, recurse=False)), 201
 
 
 @urls_bp.route("/urls/<int:url_id>", methods=["PUT"])
@@ -143,8 +151,8 @@ def update_url(url_id):
 
     changes = []
 
-    if "url" in data:
-        new_url = data["url"]
+    if "original_url" in data or "url" in data:
+        new_url = data.get("original_url") or data.get("url")
         if not isinstance(new_url, str) or not is_valid_url(new_url.strip()):
             return jsonify({"error": "A valid HTTP or HTTPS URL is required"}), 400
         url_obj.original_url = new_url.strip()
@@ -180,7 +188,7 @@ def update_url(url_id):
         except Exception:
             pass
 
-    return jsonify(model_to_dict(url_obj, backrefs=False))
+    return jsonify(model_to_dict(url_obj, backrefs=False, recurse=False))
 
 
 @urls_bp.route("/urls/<int:url_id>", methods=["DELETE"])
@@ -227,7 +235,7 @@ def url_stats(url_id):
     )
 
     return jsonify({
-        "url": model_to_dict(url_obj, backrefs=False),
+        "url": model_to_dict(url_obj, backrefs=False, recurse=False),
         "redirect_count": redirect_count,
     })
 

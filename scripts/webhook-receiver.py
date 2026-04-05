@@ -7,12 +7,53 @@ Uses only Python stdlib - no external dependencies required.
 import datetime
 import json
 import os
+import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 ALERT_LOG = os.environ.get("ALERT_LOG", "/var/log/alerts.log")
 EVIDENCE_DIR = os.environ.get("EVIDENCE_DIR", "/app/evidence")
+DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 
 os.makedirs(EVIDENCE_DIR, exist_ok=True)
+
+
+def forward_to_discord(data):
+    """Forward alert payload to Discord via webhook embed."""
+    if not DISCORD_WEBHOOK_URL:
+        return
+    try:
+        alerts = data.get("alerts", []) if isinstance(data, dict) else []
+        for alert in alerts:
+            name = alert.get("labels", {}).get("alertname", "Unknown")
+            status = alert.get("status", "unknown").upper()
+            severity = alert.get("labels", {}).get("severity", "unknown")
+            instance = alert.get("labels", {}).get("instance", "unknown")
+            desc = alert.get("annotations", {}).get("description", "")
+
+            color = 0xFF0000 if status == "FIRING" else 0x00FF00
+
+            payload = json.dumps({
+                "embeds": [{
+                    "title": "%s [%s]" % (name, status),
+                    "description": desc,
+                    "color": color,
+                    "fields": [
+                        {"name": "Severity", "value": severity, "inline": True},
+                        {"name": "Instance", "value": instance, "inline": True},
+                        {"name": "Status", "value": status, "inline": True},
+                    ],
+                }],
+            }).encode()
+
+            req = urllib.request.Request(
+                DISCORD_WEBHOOK_URL,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+            )
+            urllib.request.urlopen(req, timeout=5)
+    except Exception as e:
+        print("Discord forward failed: %s" % e)
+
 
 class AlertHandler(BaseHTTPRequestHandler):
     def do_POST(self):
@@ -53,6 +94,8 @@ class AlertHandler(BaseHTTPRequestHandler):
 
         alert_count = len(data.get("alerts", [])) if isinstance(data, dict) else 0
         print("[%s] Logged %d alert(s) to %s" % (timestamp, alert_count, ALERT_LOG))
+
+        forward_to_discord(data)
 
         self.send_response(200)
         self.send_header("Content-Type", "application/json")

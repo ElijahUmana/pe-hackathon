@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, jsonify, request
 from playhouse.shortcuts import model_to_dict
 
@@ -5,6 +7,17 @@ from app.models.event import Event
 from app.models.url import URL
 
 events_bp = Blueprint("events", __name__)
+
+
+def _serialize_event(event):
+    """Serialize an event, parsing the details JSON string into a dict."""
+    d = model_to_dict(event, backrefs=False, recurse=False)
+    if isinstance(d.get("details"), str):
+        try:
+            d["details"] = json.loads(d["details"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return d
 
 
 @events_bp.route("/events", methods=["GET"])
@@ -20,7 +33,7 @@ def list_events():
         query = query.where(Event.event_type == event_type)
 
     events = query.paginate(page, per_page)
-    return jsonify([model_to_dict(e, backrefs=False) for e in events])
+    return jsonify([_serialize_event(e) for e in events])
 
 
 @events_bp.route("/urls/<int:url_id>/events", methods=["GET"])
@@ -40,4 +53,4 @@ def url_events(url_id):
         .order_by(Event.id.desc())
         .paginate(page, per_page)
     )
-    return jsonify([model_to_dict(e, backrefs=False) for e in events])
+    return jsonify([_serialize_event(e) for e in events])
