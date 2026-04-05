@@ -98,7 +98,7 @@ ORDER BY duration DESC;"
 
 **Check 3: Connection pool exhaustion**
 
-Each Gunicorn thread opens its own database connection. With 3 instances x 3 workers x 4 threads = 36 concurrent connections. PostgreSQL's `max_connections` is set to 200, so this is fine. But if you scale up significantly:
+Each Gunicorn thread opens its own database connection. With 3 instances x 2 workers x 2 threads = 12 concurrent connections. PostgreSQL's `max_connections` is set to 100, so this is fine. But if you scale up significantly:
 
 ```bash
 docker compose exec db psql -U postgres -c "SHOW max_connections;"
@@ -194,7 +194,7 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
    ```
 
-**Memory budget for a 4GB droplet + 2GB swap:**
+**Memory budget for a 1 GB droplet + 2 GB swap:**
 
 | Component | Typical Memory |
 |---|---|

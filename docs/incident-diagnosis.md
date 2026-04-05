@@ -168,7 +168,7 @@ sum(rate(http_requests_total{status=~"5.."}[1m]))
 - p95: `histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job="flask-app"}[$__rate_interval])) by (le))`
 - p99: `histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="flask-app"}[$__rate_interval])) by (le))`
 
-**What we saw:** The p95 and p99 latency lines showed a noticeable increase during the incident window. With app2 down, app1 and app3 each absorbed ~50% more traffic than their baseline. Each Flask instance runs gunicorn with 3 workers and 4 threads (12 concurrent handlers per instance), so going from 36 total handlers across 3 instances to 24 handlers across 2 instances increased queuing under load.
+**What we saw:** The p95 and p99 latency lines showed a noticeable increase during the incident window. With app2 down, app1 and app3 each absorbed ~50% more traffic than their baseline. Each Flask instance runs gunicorn with 2 workers and 2 threads (4 concurrent handlers per instance), so going from 12 total handlers across 3 instances to 8 handlers across 2 instances increased queuing under load.
 
 The p50 (median) remained relatively stable since most requests completed quickly. The p95 increased as the tail latency grew -- requests that previously would have been handled by app2's workers were now queuing behind other requests on app1 and app3. The panel's threshold line at 1 second showed we remained well below the SLO threshold.
 
@@ -268,7 +268,7 @@ SIGKILL is unblockable -- the gunicorn master process and all worker processes w
 
 1. **Nginx upstream failure:** Nginx's upstream `app2:5000` immediately started returning `connection refused`. Nginx's passive health checking (based on failed connection attempts) eventually removed app2 from the active upstream pool. During the brief window before removal, requests routed to app2 received 502 errors.
 
-2. **Load redistribution:** The remaining instances (app1, app3) absorbed 100% of traffic. Each instance went from handling ~33% to ~50% of total load. With gunicorn configured at 3 workers x 4 threads per instance, available concurrency dropped from 36 to 24 handlers.
+2. **Load redistribution:** The remaining instances (app1, app3) absorbed 100% of traffic. Each instance went from handling ~33% to ~50% of total load. With gunicorn configured at 2 workers x 2 threads per instance, available concurrency dropped from 12 to 8 handlers.
 
 3. **Latency increase:** The increased per-instance load caused a measurable increase in p95 latency as request queuing increased.
 
@@ -296,7 +296,7 @@ docker compose start app2
 Docker Compose sequence:
 1. Waited for dependency health checks (`db: healthy`, `redis: healthy`)
 2. Started `pe-hackathon-app2-1` container
-3. Gunicorn master process started, spawned 3 workers with 4 threads each
+3. Gunicorn master process started, spawned 2 workers with 2 threads each
 4. Docker healthcheck (`curl -f http://localhost:5000/health`) passed
 
 ### 6.2 Recovery Timeline

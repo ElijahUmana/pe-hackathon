@@ -290,7 +290,7 @@ curl -s http://localhost/urls?per_page=1 | python3 -m json.tool
 
 ## Experiment 4: High Load Stress Test
 
-**Goal:** Determine the system's breaking point and observe behavior under extreme load on the 2 vCPU droplet.
+**Goal:** Determine the system's breaking point and observe behavior under extreme load on the 1 vCPU droplet.
 
 ### Hypothesis
 

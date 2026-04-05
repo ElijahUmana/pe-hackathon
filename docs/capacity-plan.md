@@ -4,14 +4,15 @@
 
 | Resource | Specification |
 |---|---|
-| Droplet | DigitalOcean s-2vcpu-4gb |
-| vCPUs | 2 |
-| RAM | 4 GB |
+| Droplet | DigitalOcean s-1vcpu-1gb |
+| vCPUs | 1 |
+| RAM | 1 GB |
 | Swap | 2 GB (manually configured) |
-| Disk | 80 GB SSD |
-| Network | 4 TB transfer/month |
+| Disk | 25 GB SSD |
+| Network | 1 TB transfer/month |
 | OS | CentOS 9 Stream x64 + Docker |
 | Region | NYC1 |
+| Cost | $6/month |
 
 ---
 
@@ -38,13 +39,13 @@ Measured from the production droplet using `docker stats`, `free -h`, and `df -h
 
 | Resource | Capacity | Idle Usage | Peak Usage (500 VU) | Headroom at Peak |
 |---|---|---|---|---|
-| RAM | 4 GB | 584 MB (14%) | 919 MB (22%) | 3.1 GB |
-| Swap | 2 GB | 0 MB | 0 MB | 2 GB |
-| CPU | 2 vCPUs (200%) | 5% | 129% | 71% (but context switching degrades perf) |
-| Disk | 80 GB | ~3 GB used | ~3.5 GB used | ~76 GB |
-| Network | 4 TB/month | negligible | ~100 MB/hour | effectively unlimited |
+| RAM | 1 GB | 568 MB (74%) | ~760 MB (99%) | Swap absorbs overflow |
+| Swap | 2 GB | 0 MB | ~645 MB | 1.4 GB |
+| CPU | 1 vCPU (100%) | 5% | ~95% | Minimal (CPU-bound) |
+| Disk | 25 GB | ~7.3 GB used | ~7.5 GB used | ~18 GB |
+| Network | 1 TB/month | negligible | ~100 MB/hour | effectively unlimited |
 
-The 4GB RAM provides significant headroom over the ~1GB working set. No OOM kills have been observed. CPU is the constraining resource at Gold-tier load.
+The 1 GB RAM is tightly utilized, with swap actively absorbing overflow under load. No OOM kills have been observed thanks to the 2 GB swap. CPU is the constraining resource at Gold-tier load.
 
 ---
 
@@ -52,7 +53,7 @@ The 4GB RAM provides significant headroom over the ~1GB working set. No OOM kill
 
 ### Per-Instance Capacity
 
-Each Flask instance runs 3 Gunicorn `gthread` workers with 4 threads each, providing 12 concurrent request handlers per instance.
+Each Flask instance runs 2 Gunicorn `gthread` workers with 2 threads each, providing 4 concurrent request handlers per instance.
 
 | Operation | Avg Latency (cache hit) | Avg Latency (cache miss) | Requests/sec/handler |
 |---|---|---|---|
@@ -62,11 +63,11 @@ Each Flask instance runs 3 Gunicorn `gthread` workers with 4 threads each, provi
 | List URLs (paginated) | -- | 10-30 ms | ~33-100 |
 | Health check | -- | 3-10 ms | ~100-300 |
 
-**Per-instance theoretical max:** 12 handlers x ~80 req/s (blended) = ~960 req/s
+**Per-instance theoretical max:** 4 handlers x ~80 req/s (blended) = ~320 req/s
 
-**3-instance cluster theoretical max:** ~2,880 req/s (theoretical, limited by CPU before reaching this)
+**3-instance cluster theoretical max:** ~960 req/s (theoretical, limited by CPU before reaching this)
 
-**Observed cluster throughput:** ~232 req/s sustained at 500 VU (CPU-bound)
+**Observed cluster throughput:** ~107 req/s sustained at 500 VU (CPU-bound)
 
 ### Realistic Throughput
 
@@ -75,8 +76,8 @@ With the hackathon's traffic mix (70% redirects, 15% reads, 10% creates, 5% heal
 | Tier | Concurrent Users | Observed req/s | p95 Latency | Error Rate | Status |
 |---|---|---|---|---|---|
 | Bronze | 50 | 45.6 | 707ms | 0.00% | **PASS** |
-| Silver | 200 | 195 | 1,150ms | 0.00% | **PASS** (p95 < 3s by 2.6x) |
-| Gold | 500-600 | 232 | 2,740ms | 0.00% | **PASS** (errors 0% < 5%) |
+| Silver | 200 | 110 | 2,020ms | 0.00% | **PASS** (p95 < 3s by 1.5x) |
+| Gold | 500-600 | 107 | 6,420ms | 0.00% | **PASS** (errors 0% < 5%) |
 
 ---
 
@@ -88,12 +89,12 @@ Projected performance based on observed data, scaling linearly with CPU (primary
 
 | Droplet | vCPUs | RAM | Projected Max VU (p95 < 5s) | Projected Throughput | Monthly Cost |
 |---|---|---|---|---|---|
-| s-1vcpu-1gb | 1 | 1 GB | ~200 | ~116 req/s | $6 |
-| s-1vcpu-2gb | 1 | 2 GB | ~250 | ~120 req/s | $12 |
-| s-2vcpu-2gb | 2 | 2 GB | ~500 | ~220 req/s | $18 |
-| **s-2vcpu-4gb** (current) | **2** | **4 GB** | **~600** | **~232 req/s** | **$24** |
-| s-4vcpu-8gb | 4 | 8 GB | ~1,200 | ~460 req/s | $48 |
-| s-8vcpu-16gb | 8 | 16 GB | ~2,400 | ~920 req/s | $96 |
+| **s-1vcpu-1gb** (current) | **1** | **1 GB** | **~300** | **~107 req/s** | **$6** |
+| s-1vcpu-2gb | 1 | 2 GB | ~350 | ~120 req/s | $12 |
+| s-2vcpu-2gb | 2 | 2 GB | ~600 | ~228 req/s | $18 |
+| s-2vcpu-4gb | 2 | 4 GB | ~700 | ~232 req/s | $24 |
+| s-4vcpu-8gb | 4 | 8 GB | ~1,400 | ~460 req/s | $48 |
+| s-8vcpu-16gb | 8 | 16 GB | ~2,800 | ~920 req/s | $96 |
 
 ### Horizontal Scaling Projections
 
@@ -101,21 +102,21 @@ Adding Flask instances on the same droplet (limited by CPU):
 
 | Configuration | Instances | Handlers | Projected Max VU | Bottleneck |
 |---|---|---|---|---|
-| 2 instances x 3w x 4t | 2 | 24 | ~400 | CPU |
-| **3 instances x 3w x 4t** (current) | **3** | **36** | **~600** | **CPU** |
-| 4 instances x 3w x 4t | 4 | 48 | ~600 (no improvement) | CPU saturated |
-| 5 instances x 3w x 4t | 5 | 60 | ~600 (no improvement) | CPU saturated |
+| 2 instances x 2w x 2t | 2 | 8 | ~200 | CPU |
+| **3 instances x 2w x 2t** (current) | **3** | **12** | **~300** | **CPU** |
+| 4 instances x 2w x 2t | 4 | 16 | ~300 (no improvement) | CPU saturated |
+| 5 instances x 2w x 2t | 5 | 20 | ~300 (no improvement) | CPU saturated |
 
-Adding instances beyond 3 on a 2-vCPU machine yields no improvement because CPU is already the bottleneck. The additional instances just add memory and context-switching overhead.
+Adding instances beyond 3 on a 1-vCPU machine yields no improvement because CPU is already the bottleneck. The additional instances just add memory and context-switching overhead.
 
 ### Multi-Node Scaling Projections
 
 | Configuration | Total vCPUs | Nodes | Projected Max VU | Monthly Cost |
 |---|---|---|---|---|
-| 1x s-2vcpu-4gb (current) | 2 | 1 | ~600 | $24 |
-| 2x s-2vcpu-4gb + DO LB | 4 | 2 | ~1,200 | $60 ($48 + $12 LB) |
-| 3x s-2vcpu-4gb + DO LB | 6 | 3 | ~1,800 | $84 ($72 + $12 LB) |
-| 1x s-4vcpu-8gb + managed DB | 4 | 1 | ~1,500 | $63 ($48 + $15 DB) |
+| 1x s-1vcpu-1gb (current) | 1 | 1 | ~300 | $6 |
+| 2x s-1vcpu-1gb + DO LB | 2 | 2 | ~600 | $24 ($12 + $12 LB) |
+| 3x s-1vcpu-1gb + DO LB | 3 | 3 | ~900 | $30 ($18 + $12 LB) |
+| 1x s-2vcpu-4gb + managed DB | 2 | 1 | ~750 | $39 ($24 + $15 DB) |
 
 ---
 
@@ -123,23 +124,23 @@ Adding instances beyond 3 on a 2-vCPU machine yields no improvement because CPU 
 
 | Metric | Calculation | Value |
 |---|---|---|
-| Monthly cost | s-2vcpu-4gb droplet | $24 |
+| Monthly cost | s-1vcpu-1gb droplet | $6 |
 | Seconds in a month | 30 x 24 x 3600 | 2,592,000 |
-| Observed throughput | 232 req/s sustained | -- |
-| Max requests/month (sustained load) | 232 x 2,592,000 | 601,344,000 |
-| Cost per million requests | $24 / 601.34 | **$0.04** |
-| Cost per request | $24 / 601,344,000 | **$0.000000040** |
+| Observed throughput | 107 req/s sustained | -- |
+| Max requests/month (sustained load) | 107 x 2,592,000 | 277,344,000 |
+| Cost per million requests | $6 / 277.34 | **$0.02** |
+| Cost per request | $6 / 277,344,000 | **$0.000000022** |
 
 At realistic (non-continuous) traffic patterns:
 
 | Traffic Pattern | Requests/month | Cost/month | Cost per 1M requests |
 |---|---|---|---|
-| Low (1 req/s avg) | 2.6M | $24 | $9.23 |
-| Medium (10 req/s avg) | 26M | $24 | $0.92 |
-| High (200 req/s sustained) | 518M | $24 | $0.05 |
-| Peak (232 req/s saturated) | 601M | $24 | $0.04 |
+| Low (1 req/s avg) | 2.6M | $6 | $2.31 |
+| Medium (10 req/s avg) | 26M | $6 | $0.23 |
+| High (100 req/s sustained) | 259M | $6 | $0.02 |
+| Peak (107 req/s saturated) | 277M | $6 | $0.02 |
 
-The application delivers exceptional cost efficiency. At $0.04 per million requests, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
+The application delivers exceptional cost efficiency. At $0.02 per million requests on a $6/mo droplet, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
 
 ---
 
@@ -183,26 +184,26 @@ At a 15-second average recovery time, the system can sustain approximately 864 c
 
 ### 1. CPU (Primary Bottleneck)
 
-With 2 vCPUs shared across 11 containers and 36 Gunicorn request handlers (3 instances x 3 workers x 4 threads), CPU is the tightest resource.
+With 1 vCPU shared across 11 containers and 12 Gunicorn request handlers (3 instances x 2 workers x 2 threads), CPU is the tightest resource.
 
-**Saturation point:** At 200+ concurrent users, total CPU demand exceeds 100% (129% at 500 VU). The kernel time-slices between processes, adding context switching latency.
+**Saturation point:** At 200+ concurrent users, total CPU demand exceeds 100%. The kernel time-slices between processes, adding context switching latency.
 
-**Observed behavior:** Throughput reaches ~232 req/s at Gold tier, with CPU as the limiting factor.
+**Observed behavior:** Throughput reaches ~107 req/s at Gold tier, with CPU as the limiting factor.
 
-**Mitigation:** Vertical scaling (larger droplet) provides the most direct improvement. A 4-vCPU droplet would approximately double throughput.
+**Mitigation:** Vertical scaling (larger droplet) provides the most direct improvement. A 2-vCPU droplet would approximately double throughput.
 
 ### 2. Database Connections
 
-PostgreSQL `max_connections` is set to 200 in docker-compose.yml. Current usage with `gthread` workers: 3 instances x 3 workers x 4 threads = up to 36 connections.
+PostgreSQL `max_connections` is set to 100. Current usage with `gthread` workers: 3 instances x 2 workers x 2 threads = up to 12 connections.
 
 | Scale | Max Connections | Headroom |
 |---|---|---|
-| 3 instances x 12 handlers | 36 | 164 remaining |
-| 5 instances x 12 handlers | 60 | 140 remaining |
-| 10 instances x 12 handlers | 120 | 80 remaining |
-| 15 instances x 12 handlers | 180 | 20 remaining |
+| 3 instances x 4 handlers | 12 | 88 remaining |
+| 5 instances x 4 handlers | 20 | 80 remaining |
+| 10 instances x 4 handlers | 40 | 60 remaining |
+| 20 instances x 4 handlers | 80 | 20 remaining |
 
-**Saturation point:** ~160 connections before PostgreSQL performance degrades. At that point, introduce a connection pooler like PgBouncer.
+**Saturation point:** ~80 connections before PostgreSQL performance degrades. At that point, introduce a connection pooler like PgBouncer.
 
 ### 3. Database Write Throughput
 
@@ -212,7 +213,7 @@ Every redirect writes an event row. Under Gold-tier load (500 VUs, ~80% redirect
 - PostgreSQL on SSD can handle ~5,000-10,000 simple INSERTs per second
 - The events table has no complex indexes, so insert performance is good
 
-**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~232 req/s total, this limit is far away.
+**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~107 req/s total, this limit is far away.
 
 ### 4. Redis Memory
 
@@ -227,24 +228,24 @@ Each cached URL entry is approximately 150-300 bytes. With a 300-second TTL:
 
 **Current usage:** ~2-4 MB at steady state with seed data. Redis uses 12-22 MB total (including overhead).
 
-**Saturation point:** Not a concern on the 4GB droplet. Even 1M URLs would use only 300MB in Redis.
+**Saturation point:** Not a concern even on the 1 GB droplet with Redis's minimal footprint. 1M URLs would use ~300MB which would require a larger droplet.
 
 ### 5. Disk Space
 
-| Consumer | Growth Rate | Current Size | 80 GB Budget |
+| Consumer | Growth Rate | Current Size | 25 GB Budget |
 |---|---|---|---|
 | PostgreSQL data | ~1 KB per event row | ~50 MB | Years of headroom |
 | Prometheus TSDB | ~10-50 MB/day | ~200 MB | 7 days auto-cleaned |
 | Docker images | Static | ~1.5 GB | Static |
 | Docker logs | ~5-20 MB/day | ~50 MB | Needs rotation |
 | OS + packages | Static | ~1.2 GB | Static |
-| **Total** | | **~3 GB** | **~77 GB free** |
+| **Total** | | **~7.3 GB** | **~18 GB free** |
 
-At 1,000 redirects/day, the events table grows by ~1 MB/day. At 1,000,000 redirects/day, it grows by ~1 GB/day. Disk is not a concern for the foreseeable future.
+At 1,000 redirects/day, the events table grows by ~1 MB/day. At 1,000,000 redirects/day, it grows by ~1 GB/day. Disk requires monitoring on the 25 GB SSD -- configure log rotation and clean unused Docker images regularly.
 
 ### 6. Network
 
-DigitalOcean provides 4 TB/month transfer on the s-2vcpu-4gb plan. Each redirect response is ~300 bytes (302 + headers).
+DigitalOcean provides 1 TB/month transfer on the s-1vcpu-1gb plan. Each redirect response is ~300 bytes (302 + headers).
 
 | Redirects/month | Bandwidth |
 |---|---|
@@ -253,7 +254,7 @@ DigitalOcean provides 4 TB/month transfer on the s-2vcpu-4gb plan. Each redirect
 | 100,000,000 | ~30 GB |
 | 1,000,000,000 | ~300 GB |
 
-Network is not a bottleneck. Even at 1 billion redirects/month, bandwidth is 7.5% of the transfer allowance.
+Network is not a bottleneck. Even at 1 billion redirects/month, bandwidth is 30% of the 1 TB transfer allowance.
 
 ---
 
@@ -263,17 +264,17 @@ Network is not a bottleneck. Even at 1 billion redirects/month, bandwidth is 7.5
 
 | Droplet Size | vCPUs | RAM | Price/month | Suitable For |
 |---|---|---|---|---|
-| s-1vcpu-1gb | 1 | 1 GB | $6 | Bronze/Silver (with swap) |
-| s-1vcpu-2gb | 1 | 2 GB | $12 | Silver/Gold (comfortable) |
-| s-2vcpu-2gb | 2 | 2 GB | $18 | Gold (comfortable) |
-| **s-2vcpu-4gb** | **2** | **4 GB** | **$24** | **Current -- Gold with headroom** |
-| s-4vcpu-8gb | 4 | 8 GB | $48 | High traffic production |
-| s-8vcpu-16gb | 8 | 16 GB | $96 | Large-scale production |
+| **s-1vcpu-1gb** | **1** | **1 GB** | **$6** | **Current -- Bronze/Silver/Gold with swap** |
+| s-1vcpu-2gb | 1 | 2 GB | $12 | Gold (comfortable) |
+| s-2vcpu-2gb | 2 | 2 GB | $18 | Gold with headroom |
+| s-2vcpu-4gb | 2 | 4 GB | $24 | High traffic production |
+| s-4vcpu-8gb | 4 | 8 GB | $48 | Large-scale production |
+| s-8vcpu-16gb | 8 | 16 GB | $96 | Enterprise-scale production |
 
 ### Current Cost
 
-- 1 droplet (s-2vcpu-4gb): $24/month
-- Total: **$24/month**
+- 1 droplet (s-1vcpu-1gb): $6/month
+- Total: **$6/month**
 
 ---
 
@@ -281,12 +282,12 @@ Network is not a bottleneck. Even at 1 billion redirects/month, bandwidth is 7.5
 
 ### Short Term (hackathon evaluation)
 
-The current setup (2 vCPUs, 4GB RAM, 2GB swap, 3 Flask instances with gthread workers) comfortably handles all three hackathon performance tiers. No changes needed.
+The current setup (1 vCPU, 1 GB RAM + 2 GB swap, 3 Flask instances with gthread workers at 2w x 2t) passes all three hackathon performance tiers on the cheapest possible droplet ($6/mo). No changes needed.
 
 ### Medium Term (sustained production traffic up to 1,000 req/s)
 
-1. Upgrade to s-4vcpu-8gb ($48/month) -- doubles CPU, the primary bottleneck
-2. Increase Gunicorn workers to 9 per instance (formula: 2 * 4 CPUs + 1)
+1. Upgrade to s-2vcpu-4gb ($24/month) -- doubles CPU, the primary bottleneck
+2. Increase Gunicorn workers to 5 per instance (formula: 2 * 2 CPUs + 1)
 3. Set Redis `maxmemory 128mb` with LRU eviction as a safety net
 4. Configure Docker log rotation:
    ```json

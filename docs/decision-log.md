@@ -117,13 +117,13 @@ This document records the rationale behind major technology and design choices.
 
 ## DEC-007: Gunicorn as the WSGI Server
 
-**Decision:** Use Gunicorn with gthread workers (3 workers x 4 threads) per instance as the production WSGI server.
+**Decision:** Use Gunicorn with gthread workers (2 workers x 2 threads) per instance as the production WSGI server.
 
 **Context:** Flask's built-in development server (`flask run`) is single-threaded and not suitable for production traffic.
 
 **Rationale:**
 - Gunicorn pre-forks worker processes, allowing each Flask instance to handle multiple concurrent requests.
-- 3 workers x 4 threads per instance, across 3 instances, provides 36 concurrent request handlers.
+- 2 workers x 2 threads per instance, across 3 instances, provides 12 concurrent request handlers.
 - `gthread` workers use threads within each worker process, reducing memory overhead compared to pure sync workers while improving throughput for I/O-bound operations (database queries, Redis lookups).
 - The `--timeout 120` setting prevents worker starvation under sustained load.
 - `--access-logfile -` logs requests to stdout, which Docker captures and makes available via `docker compose logs`.

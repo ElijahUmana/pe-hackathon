@@ -3,7 +3,7 @@
 ## Prerequisites
 
 - A server with Docker and Docker Compose installed (tested on CentOS 9 Stream, Ubuntu 22.04+)
-- Minimum: 2 vCPUs, 4GB RAM (recommended for all 3 hackathon performance tiers)
+- Minimum: 1 vCPU, 1 GB RAM + 2 GB swap (sufficient for all 3 hackathon performance tiers)
 - Ports 80, 3000, 9090, 9093, 9094 available
 - SSH access to the server
 - (Optional) A domain name pointed at your server IP
@@ -16,12 +16,12 @@
 # Using doctl CLI (or create via the DigitalOcean web console)
 doctl compute droplet create url-shortener \
   --region nyc1 \
-  --size s-2vcpu-4gb \
+  --size s-1vcpu-1gb \
   --image docker-20-04 \
   --ssh-keys <your-ssh-key-fingerprint>
 ```
 
-The `docker-20-04` image comes with Docker and Docker Compose pre-installed. The s-2vcpu-4gb size ($24/month) provides 2 vCPUs, 4GB RAM, and 80GB SSD -- enough to comfortably run all 11 containers and pass the Gold-tier load test.
+The `docker-20-04` image comes with Docker and Docker Compose pre-installed. The s-1vcpu-1gb size ($6/month) provides 1 vCPU, 1 GB RAM, and 25 GB SSD -- enough to run all 11 containers and pass the Gold-tier load test with 2 GB swap configured.
 
 ### 2. SSH Into the Droplet
 
@@ -31,7 +31,7 @@ ssh root@<droplet-ip>
 
 ### 3. Add Swap Space
 
-Even with 4GB RAM, swap provides a safety net for memory spikes under extreme load:
+With 1 GB RAM, swap is essential for running all 11 containers under load:
 
 ```bash
 # Create 2GB swap file
@@ -309,7 +309,7 @@ Then increase Gunicorn workers in the Dockerfile:
 CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "8", ...]
 ```
 
-The Gunicorn worker count formula: `2 * num_cpus + 1`. For 2 vCPUs, use 5 workers (current: 3 workers x 4 threads). For 4 vCPUs, use 9 workers.
+The Gunicorn worker count formula: `2 * num_cpus + 1`. For 1 vCPU, use 2-3 workers (current: 2 workers x 2 threads). For 2 vCPUs, use 5 workers.
 
 ### Scale Down
 

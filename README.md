@@ -28,7 +28,7 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
               +----v----+ +---v---+ +----v----+
               | Flask 1 | | Flask 2| | Flask 3 |
               | Gunicorn| | Gunicorn| | Gunicorn|
-              | 3w x 4t | | 3w x 4t | | 3w x 4t |
+              | 2w x 2t | | 2w x 2t | | 2w x 2t |
               +----+----+ +---+---+ +----+----+
                    |           |           |
           +--------+-----------+-----------+--------+
@@ -59,7 +59,7 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 | Component | Technology | Purpose |
 |---|---|---|
 | Web Framework | Flask 3.1 | HTTP routing, request handling |
-| WSGI Server | Gunicorn 23 | Production server, 3 workers x 4 threads per instance |
+| WSGI Server | Gunicorn 23 | Production server, 2 workers x 2 threads per instance |
 | ORM | Peewee 3.17 | Database models, queries, migrations |
 | Database | PostgreSQL 16 | Primary data store |
 | Cache | Redis 7 | Redirect lookup cache (300s TTL) |
@@ -89,20 +89,20 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 
 ## Performance
 
-Tested on a DigitalOcean s-2vcpu-4gb droplet (2 vCPUs, 4GB RAM) with 3 Flask instances behind Nginx.
+Tested on a DigitalOcean s-1vcpu-1gb droplet (1 vCPU, 1 GB RAM + 2 GB swap, $6/mo) with 3 Flask instances behind Nginx (2 workers x 2 threads each = 12 handlers total).
 
 | Tier | Concurrent Users | p95 Latency | Error Rate | Throughput | Status |
 |------|-----------------|-------------|------------|------------|--------|
 | Bronze | 50 | 707ms | 0.00% | 45.6 req/s | **PASS** |
-| Silver | 200 | 1,150ms | 0.00% | 195 req/s | **PASS** |
-| Gold | 500-600 | 2,740ms | 0.00% | 232 req/s | **PASS** |
+| Silver | 200 | 2,020ms | 0.00% | 110 req/s | **PASS** |
+| Gold | 500-600 | 6,420ms | 0.00% | 107 req/s | **PASS** |
 
 **Key metrics:**
 - Redirect latency (cache hit): **5-15ms** p50
 - Cache hit ratio under load: **85%**
-- Throughput: **232 req/s** sustained at 500+ concurrent users
+- Throughput: **107 req/s** sustained at 500+ concurrent users
 - Auto-recovery from container crashes: **5-15 seconds**
-- Cost: **$24/month** ($0.04 per million requests)
+- Cost: **$6/month** ($0.02/million requests)
 
 See [docs/bottleneck-report.md](docs/bottleneck-report.md) for the full analysis.
 

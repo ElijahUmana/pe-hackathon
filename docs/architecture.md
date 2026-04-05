@@ -14,9 +14,9 @@ graph TB
     end
 
     subgraph "Application Layer"
-        App1[Flask + Gunicorn<br/>Instance 1<br/>3w x 4t]
-        App2[Flask + Gunicorn<br/>Instance 2<br/>3w x 4t]
-        App3[Flask + Gunicorn<br/>Instance 3<br/>3w x 4t]
+        App1[Flask + Gunicorn<br/>Instance 1<br/>2w x 2t]
+        App2[Flask + Gunicorn<br/>Instance 2<br/>2w x 2t]
+        App3[Flask + Gunicorn<br/>Instance 3<br/>2w x 2t]
     end
 
     subgraph "Data Layer"
@@ -503,8 +503,8 @@ Request Flow for GET /:short_code
 
 | Resource | Pool Strategy | Size | Configuration |
 |----------|--------------|------|---------------|
-| PostgreSQL connections | One connection per Gunicorn thread, opened in `before_request`, closed in `teardown_appcontext` | 3 instances x 3 workers x 4 threads = 36 max | Peewee's `connect(reuse_if_open=True)` |
-| Redis connections | Singleton client per process, reused across requests | 1 per worker process = 9 max | `redis.from_url()` with connection pooling |
+| PostgreSQL connections | One connection per Gunicorn thread, opened in `before_request`, closed in `teardown_appcontext` | 3 instances x 2 workers x 2 threads = 12 max | Peewee's `connect(reuse_if_open=True)` |
+| Redis connections | Singleton client per process, reused across requests | 1 per worker process = 6 max | `redis.from_url()` with connection pooling |
 | Nginx upstream connections | Kept alive per-worker | 4096 `worker_connections` | Configured in `nginx.conf` events block |
 
 ### Load Balancing Algorithm
