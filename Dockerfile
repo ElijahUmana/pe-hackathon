@@ -30,5 +30,4 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
 # Production: gunicorn with 2 workers x 2 threads per instance
-# --keep-alive 65 keeps upstream connections alive (matches nginx keepalive_timeout)
-CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "2", "--timeout", "120", "--keep-alive", "65", "--worker-class", "gthread", "--access-logfile", "/dev/null", "--log-level", "warning", "run:app"]
+CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "2", "--timeout", "120", "--keep-alive", "5", "--worker-class", "gthread", "--access-logfile", "-", "run:app"]
