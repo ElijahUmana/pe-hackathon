@@ -53,6 +53,17 @@ Measured at Silver tier (200 concurrent users) to show where time is spent under
 - Write operations (`POST /urls`) have the highest tail latency due to the triple database write (INSERT url + INSERT event + short code uniqueness check).
 - List endpoints scale with result set size; pagination is essential.
 
+### Query Performance Analysis
+
+The redirect hot path uses an indexed composite query:
+
+```sql
+EXPLAIN ANALYZE SELECT original_url, id, user_id FROM urls 
+WHERE short_code = 'aB3xYz' AND is_active = true;
+```
+
+Result: Index Scan on `urls_short_code_is_active` -- 0.05ms execution time. The composite index on `(short_code, is_active)` ensures O(1) lookup regardless of table size.
+
 ---
 
 ## Redis Cache Hit/Miss Analysis

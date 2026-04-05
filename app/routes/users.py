@@ -17,6 +17,11 @@ users_bp = Blueprint("users", __name__)
 
 @users_bp.route("/users/bulk", methods=["POST"])
 def bulk_create_users():
+    # Limit upload size to 10MB
+    content_length = request.content_length
+    if content_length and content_length > 10 * 1024 * 1024:
+        return jsonify({"error": "File too large (max 10MB)"}), 413
+
     if "file" not in request.files:
         return jsonify({"error": "No file provided"}), 400
 

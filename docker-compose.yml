@@ -39,6 +39,12 @@ services:
   # Flask App Instance 1
   app1:
     build: .
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
     environment:
       DATABASE_NAME: hackathon_db
       DATABASE_HOST: db
@@ -58,6 +64,12 @@ services:
   # Flask App Instance 2
   app2:
     build: .
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
     environment:
       DATABASE_NAME: hackathon_db
       DATABASE_HOST: db
@@ -77,6 +89,12 @@ services:
   # Flask App Instance 3
   app3:
     build: .
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
     environment:
       DATABASE_NAME: hackathon_db
       DATABASE_HOST: db

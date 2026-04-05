@@ -7,6 +7,8 @@ without requiring a running Redis server.
 import json
 from unittest.mock import MagicMock, patch
 
+import redis
+
 from app.models.event import Event
 
 
@@ -278,7 +280,7 @@ class TestWarmCache:
         mock_redis = MagicMock()
         mock_pipe = MagicMock()
         mock_redis.pipeline.return_value = mock_pipe
-        mock_pipe.execute.side_effect = Exception("Redis pipeline error")
+        mock_pipe.execute.side_effect = redis.RedisError("Redis pipeline error")
 
         with patch("app.cache.get_redis", return_value=mock_redis):
             from app.cache import warm_cache

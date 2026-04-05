@@ -633,3 +633,64 @@ curl -v http://localhost/$SHORT 2>&1 | grep -E "(< HTTP|< Location|< X-Cache)"
 # Metrics are flowing
 curl -s http://localhost/metrics | head -5
 ```
+
+---
+
+## Disaster Recovery
+
+### Database Backup
+
+Create a full database backup before any risky operation, and on a regular schedule:
+
+```bash
+docker exec pe-hackathon-db-1 pg_dump -U postgres hackathon_db > backup.sql
+```
+
+### Database Restore
+
+Restore from a backup file:
+
+```bash
+cat backup.sql | docker exec -i pe-hackathon-db-1 psql -U postgres hackathon_db
+```
+
+### Complete Host Failure Recovery
+
+If the Droplet is lost entirely (disk failure, accidental deletion, etc.), follow these steps:
+
+1. **Provision a new Droplet** with the same size (s-1vcpu-1gb) and the `docker-20-04` image.
+
+2. **Configure swap** (see the "Add Swap Space" section above).
+
+3. **Clone the repository:**
+   ```bash
+   cd /opt
+   git clone <repo-url> url-shortener
+   cd url-shortener
+   ```
+
+4. **Start all services:**
+   ```bash
+   docker compose up --build -d
+   ```
+
+5. **Restore the database from backup:**
+   ```bash
+   cat backup.sql | docker exec -i pe-hackathon-db-1 psql -U postgres hackathon_db
+   ```
+   If no backup is available, re-seed with the default dataset:
+   ```bash
+   docker compose exec app1 uv run python -m app.seed
+   ```
+
+6. **Verify the deployment** using the smoke test checklist above.
+
+### Recovery Time Estimates
+
+| Scenario | Estimated Time |
+|----------|---------------|
+| New Droplet provisioning | 1-2 minutes |
+| Docker image pulls + builds | 3-5 minutes |
+| Database restore from backup | < 1 minute (for datasets under 100MB) |
+| Full recovery (provision + deploy + restore) | 10-15 minutes |
+| Re-seed instead of restore | 1-2 minutes |

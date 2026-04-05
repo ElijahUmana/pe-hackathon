@@ -25,7 +25,7 @@ def get_redis():
         _redis_client = redis.Redis(connection_pool=_redis_pool, decode_responses=True)
         _redis_client.ping()
         return _redis_client
-    except Exception:
+    except (redis.RedisError, ConnectionError, OSError):
         _redis_client = None
         _redis_pool = None
         return None
@@ -76,5 +76,5 @@ def warm_cache(app):
                 count += 1
             pipe.execute()
             logger.info(f"Cache warm-up complete: {count} URLs loaded")
-    except Exception as e:
+    except (redis.RedisError, ConnectionError, OSError) as e:
         logger.warning(f"Cache warm-up failed: {e}")
