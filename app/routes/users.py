@@ -7,6 +7,8 @@ from peewee import IntegrityError
 from playhouse.shortcuts import model_to_dict
 
 from app.database import db
+from app.models.event import Event
+from app.models.url import URL
 from app.models.user import User
 from app.utils.validators import validate_email
 
@@ -73,12 +75,16 @@ def create_user():
         username = username.strip()
     if not username or not isinstance(username, str):
         return jsonify({"error": "username is required"}), 400
+    if len(username) > 255:
+        return jsonify({"error": "username must be 255 characters or fewer"}), 400
 
     email = data.get("email", "")
     if isinstance(email, str):
         email = email.strip()
     if not email or not isinstance(email, str):
         return jsonify({"error": "email is required"}), 400
+    if len(email) > 255:
+        return jsonify({"error": "email must be 255 characters or fewer"}), 400
 
     if not validate_email(email):
         return jsonify({"error": "Invalid email format"}), 400
@@ -118,12 +124,16 @@ def update_user(user_id):
         username = data["username"]
         if not username or not isinstance(username, str) or not username.strip():
             return jsonify({"error": "username cannot be empty"}), 400
+        if len(username.strip()) > 255:
+            return jsonify({"error": "username must be 255 characters or fewer"}), 400
         user.username = username.strip()
 
     if "email" in data:
         email = data["email"]
         if not email or not isinstance(email, str) or not email.strip():
             return jsonify({"error": "email cannot be empty"}), 400
+        if len(email.strip()) > 255:
+            return jsonify({"error": "email must be 255 characters or fewer"}), 400
         if not validate_email(email.strip()):
             return jsonify({"error": "Invalid email format"}), 400
         user.email = email.strip()
@@ -143,5 +153,10 @@ def delete_user(user_id):
     except User.DoesNotExist:
         return jsonify({"error": "User not found"}), 404
 
-    user.delete_instance()
+    with db.atomic():
+        # Nullify foreign keys referencing this user before deleting
+        Event.update(user_id=None).where(Event.user_id == user_id).execute()
+        URL.update(user_id=None).where(URL.user_id == user_id).execute()
+        user.delete_instance()
+
     return "", 204
