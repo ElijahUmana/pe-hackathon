@@ -7,7 +7,7 @@ Uses only Python stdlib - no external dependencies required.
 import datetime
 import json
 import os
-import urllib.request
+import subprocess
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
 ALERT_LOG = os.environ.get("ALERT_LOG", "/var/log/alerts.log")
@@ -45,12 +45,16 @@ def forward_to_discord(data):
                 }],
             }).encode()
 
-            req = urllib.request.Request(
-                DISCORD_WEBHOOK_URL,
-                data=payload,
-                headers={"Content-Type": "application/json"},
+            result = subprocess.run(
+                [
+                    "curl", "-s", "-o", "/dev/null", "-w", "%{http_code}",
+                    "-X", "POST", DISCORD_WEBHOOK_URL,
+                    "-H", "Content-Type: application/json",
+                    "-d", payload.decode(),
+                ],
+                capture_output=True, text=True, timeout=10,
             )
-            urllib.request.urlopen(req, timeout=5)
+            print("Discord response: HTTP %s" % result.stdout.strip())
     except Exception as e:
         print("Discord forward failed: %s" % e)
 
