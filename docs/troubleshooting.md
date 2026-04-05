@@ -232,6 +232,7 @@ sudo ss -tlnp | grep :80
 | 6379 | Redis | Local Redis |
 | 9090 | Prometheus | -- |
 | 9093 | Alertmanager | -- |
+| 9094 | Webhook Receiver | -- |
 
 **Fix option 1: Stop the conflicting service**
 ```bash

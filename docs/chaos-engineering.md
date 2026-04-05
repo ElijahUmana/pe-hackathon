@@ -290,7 +290,7 @@ curl -s http://localhost/urls?per_page=1 | python3 -m json.tool
 
 ## Experiment 4: High Load Stress Test
 
-**Goal:** Determine the system's breaking point and observe behavior under extreme load on the 1 vCPU droplet.
+**Goal:** Determine the system's breaking point and observe behavior under extreme load on the 2 vCPU droplet.
 
 ### Hypothesis
 
@@ -326,7 +326,7 @@ docker compose ps
 - k6 threshold `http_req_duration p(95) < 5000` passes.
 - k6 threshold `errors rate < 0.05` passes.
 - CPU usage hits 80-100% during the 500 VU hold phase.
-- Memory stays within bounds (1GB + 2GB swap).
+- Memory stays within bounds (4GB + 2GB swap).
 - Cache hit ratio exceeds 80% during sustained load (same URLs accessed repeatedly).
 - No containers crash or restart.
 - Latency increases during the 600 VU push phase but returns to normal during cool-down.

@@ -94,7 +94,7 @@ When one of the three Flask+Gunicorn instances crashes:
 
 1. **Nginx detects the failure** when the upstream connection is refused or times out (10-second connect timeout).
 2. **Nginx routes subsequent requests to the remaining healthy instances.** The failed instance is temporarily removed from the pool.
-3. **Overall capacity drops by approximately 33%** (from 12 workers to 8).
+3. **Overall capacity drops by approximately 33%** (from 36 handlers to 24).
 4. **Prometheus shows the instance as DOWN** (`up{instance="appN:5000"} == 0`).
 5. **ServiceDown alert fires** after 1 minute.
 
@@ -262,6 +262,77 @@ When Alertmanager crashes:
 
 ---
 
+## Node Exporter Failure
+
+### What Happens
+
+When the Node Exporter container crashes:
+
+1. **Host-level metrics (CPU, RAM, disk, network) stop being collected.** Prometheus shows the node-exporter target as DOWN.
+2. **Infrastructure alert rules that depend on Node Exporter metrics stop evaluating correctly.** HostHighCpuUsage, HostHighMemoryUsage, HostDiskSpaceLow, and HostNetworkErrors alerts will not fire.
+3. **The NodeExporterDown alert fires** after 30 seconds.
+4. **No impact on the application, other metrics, or application-level alerts.**
+
+### Impact Assessment
+
+| Impact | Severity |
+|---|---|
+| Application functionality | No impact |
+| Application metrics | No impact |
+| Application alerts | No impact |
+| Host metrics | Unavailable |
+| Infrastructure alerts | Blind for the outage period |
+
+**Data loss risk:** Host metrics for the outage window are permanently lost.
+
+### Recovery Behavior
+
+- Docker restart policy restarts the Node Exporter container.
+- Prometheus resumes scraping within one scrape interval (15 seconds).
+
+### Estimated Recovery Time
+
+- Container restart: 1-3 seconds
+
+---
+
+## Webhook Receiver Failure
+
+### What Happens
+
+When the Webhook Receiver container crashes:
+
+1. **Alert notifications stop being logged and forwarded.** Alertmanager will attempt to send alerts to the webhook receiver but receive connection errors.
+2. **Prometheus continues evaluating alert rules** and shows alerts as FIRING in its own UI.
+3. **Alertmanager continues grouping alerts** and will retry delivery.
+4. **The application, metrics collection, and dashboards are unaffected.**
+5. **If Discord forwarding is configured, Discord notifications also stop.**
+
+### Impact Assessment
+
+| Impact | Severity |
+|---|---|
+| Application functionality | No impact |
+| Alert evaluation | Continues (Prometheus) |
+| Alert notification delivery | Stops (Alertmanager retries) |
+| Alert logging | Stops (local log and evidence files not written) |
+| Discord forwarding | Stops (if configured) |
+| Dashboard visibility | No impact |
+
+**Data loss risk:** Alerts that fire during the outage are evaluated by Prometheus and queued by Alertmanager. Once the webhook receiver recovers, Alertmanager will resend any alerts that are still in the FIRING state. Alerts that fired and resolved during the outage window may not be logged.
+
+### Recovery Behavior
+
+- Docker restart policy restarts the webhook receiver.
+- Alertmanager will retry delivery of pending alerts.
+- The evidence directory is mounted as a Docker volume, so previously written files persist.
+
+### Estimated Recovery Time
+
+- Container restart: 1-3 seconds
+
+---
+
 ## Cascading Failure Scenarios
 
 ### Scenario 1: PostgreSQL Crash Under Load
@@ -323,5 +394,7 @@ When multiple components fail simultaneously, restore in this order:
 3. **Flask instances** -- Restores application availability.
 4. **Nginx** -- Restores external access.
 5. **Prometheus** -- Restores monitoring.
-6. **Alertmanager** -- Restores alert notifications.
-7. **Grafana** -- Restores dashboards.
+6. **Alertmanager** -- Restores alert routing.
+7. **Webhook Receiver** -- Restores alert logging and Discord forwarding.
+8. **Node Exporter** -- Restores host-level metrics.
+9. **Grafana** -- Restores dashboards.

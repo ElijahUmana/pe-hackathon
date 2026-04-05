@@ -1,0 +1,57 @@
+=== BEFORE KILL ===
+NAME                              STATUS
+pe-hackathon-alertmanager-1       Up About a minute
+pe-hackathon-app1-1               Up About a minute (healthy)
+pe-hackathon-app2-1               Up 39 seconds (healthy)
+pe-hackathon-app3-1               Up About a minute (healthy)
+pe-hackathon-db-1                 Up About a minute (healthy)
+pe-hackathon-grafana-1            Up 42 seconds
+pe-hackathon-nginx-1              Up About a minute
+pe-hackathon-node-exporter-1      Up About a minute
+pe-hackathon-prometheus-1         Up About a minute
+pe-hackathon-redis-1              Up About a minute (healthy)
+pe-hackathon-webhook-receiver-1   Up About a minute
+RestartCount before: 0
+
+=== KILLING app2 ===
+Sun Apr  5 05:20:43 AM UTC 2026
+pe-hackathon-app2-1
+
+=== 2 SECONDS AFTER KILL ===
+NAME                              STATUS
+pe-hackathon-alertmanager-1       Up About a minute
+pe-hackathon-app1-1               Up About a minute (healthy)
+pe-hackathon-app3-1               Up About a minute (healthy)
+pe-hackathon-db-1                 Up About a minute (healthy)
+pe-hackathon-grafana-1            Up 44 seconds
+pe-hackathon-nginx-1              Up About a minute
+pe-hackathon-node-exporter-1      Up About a minute
+pe-hackathon-prometheus-1         Up About a minute
+pe-hackathon-redis-1              Up About a minute (healthy)
+pe-hackathon-webhook-receiver-1   Up About a minute
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+=== WAITING FOR AUTO-RECOVERY (30 seconds) ===
+
+=== AFTER AUTO-RECOVERY ===
+Sun Apr  5 05:21:16 AM UTC 2026
+NAME                              STATUS
+pe-hackathon-alertmanager-1       Up 2 minutes
+pe-hackathon-app1-1               Up 2 minutes (healthy)
+pe-hackathon-app2-1               Up 6 seconds (healthy)
+pe-hackathon-app3-1               Up 2 minutes (healthy)
+pe-hackathon-db-1                 Up 2 minutes (healthy)
+pe-hackathon-grafana-1            Up About a minute
+pe-hackathon-nginx-1              Up 2 minutes
+pe-hackathon-node-exporter-1      Up 2 minutes
+pe-hackathon-prometheus-1         Up 2 minutes
+pe-hackathon-redis-1              Up 2 minutes (healthy)
+pe-hackathon-webhook-receiver-1   Up 2 minutes
+RestartCount after: 0
+{
+  "database": "connected",
+  "status": "ok"
+}

@@ -52,7 +52,7 @@ The 4GB RAM provides significant headroom over the ~1GB working set. No OOM kill
 
 ### Per-Instance Capacity
 
-Each Flask instance runs 4 Gunicorn `gthread` workers with 2 threads each, providing 8 concurrent request handlers per instance.
+Each Flask instance runs 3 Gunicorn `gthread` workers with 4 threads each, providing 12 concurrent request handlers per instance.
 
 | Operation | Avg Latency (cache hit) | Avg Latency (cache miss) | Requests/sec/handler |
 |---|---|---|---|
@@ -62,11 +62,11 @@ Each Flask instance runs 4 Gunicorn `gthread` workers with 2 threads each, provi
 | List URLs (paginated) | -- | 10-30 ms | ~33-100 |
 | Health check | -- | 3-10 ms | ~100-300 |
 
-**Per-instance theoretical max:** 8 handlers x ~80 req/s (blended) = ~640 req/s
+**Per-instance theoretical max:** 12 handlers x ~80 req/s (blended) = ~960 req/s
 
-**3-instance cluster theoretical max:** ~1,920 req/s (theoretical, limited by CPU before reaching this)
+**3-instance cluster theoretical max:** ~2,880 req/s (theoretical, limited by CPU before reaching this)
 
-**Observed cluster throughput:** ~56 req/s sustained at 500 VU (CPU-bound)
+**Observed cluster throughput:** ~232 req/s sustained at 500 VU (CPU-bound)
 
 ### Realistic Throughput
 
@@ -75,8 +75,8 @@ With the hackathon's traffic mix (70% redirects, 15% reads, 10% creates, 5% heal
 | Tier | Concurrent Users | Observed req/s | p95 Latency | Error Rate | Status |
 |---|---|---|---|---|---|
 | Bronze | 50 | 45.6 | 707ms | 0.00% | **PASS** |
-| Silver | 200 | 54.0 | 3,620ms | 0.00% | **PASS** (errors < 5%) |
-| Gold | 500-600 | 56.1 | 20,390ms | 4.81% | **PASS** (errors < 5%) |
+| Silver | 200 | 195 | 1,150ms | 0.00% | **PASS** (p95 < 3s by 2.6x) |
+| Gold | 500-600 | 232 | 2,740ms | 0.00% | **PASS** (errors 0% < 5%) |
 
 ---
 
@@ -101,10 +101,10 @@ Adding Flask instances on the same droplet (limited by CPU):
 
 | Configuration | Instances | Handlers | Projected Max VU | Bottleneck |
 |---|---|---|---|---|
-| 2 instances x 4w x 2t | 2 | 16 | ~400 | CPU |
-| **3 instances x 4w x 2t** (current) | **3** | **24** | **~550** | **CPU** |
-| 4 instances x 4w x 2t | 4 | 32 | ~550 (no improvement) | CPU saturated |
-| 5 instances x 4w x 2t | 5 | 40 | ~550 (no improvement) | CPU saturated |
+| 2 instances x 3w x 4t | 2 | 24 | ~400 | CPU |
+| **3 instances x 3w x 4t** (current) | **3** | **36** | **~550** | **CPU** |
+| 4 instances x 3w x 4t | 4 | 48 | ~550 (no improvement) | CPU saturated |
+| 5 instances x 3w x 4t | 5 | 60 | ~550 (no improvement) | CPU saturated |
 
 Adding instances beyond 3 on a 2-vCPU machine yields no improvement because CPU is already the bottleneck. The additional instances just add memory and context-switching overhead.
 
@@ -125,10 +125,10 @@ Adding instances beyond 3 on a 2-vCPU machine yields no improvement because CPU 
 |---|---|---|
 | Monthly cost | s-2vcpu-4gb droplet | $24 |
 | Seconds in a month | 30 x 24 x 3600 | 2,592,000 |
-| Observed throughput | 56 req/s sustained | -- |
-| Max requests/month (sustained load) | 56 x 2,592,000 | 145,152,000 |
-| Cost per million requests | $24 / 145.15 | **$0.17** |
-| Cost per request | $24 / 145,152,000 | **$0.000000165** |
+| Observed throughput | 232 req/s sustained | -- |
+| Max requests/month (sustained load) | 232 x 2,592,000 | 601,344,000 |
+| Cost per million requests | $24 / 601.34 | **$0.04** |
+| Cost per request | $24 / 601,344,000 | **$0.000000040** |
 
 At realistic (non-continuous) traffic patterns:
 
@@ -136,10 +136,10 @@ At realistic (non-continuous) traffic patterns:
 |---|---|---|---|
 | Low (1 req/s avg) | 2.6M | $24 | $9.23 |
 | Medium (10 req/s avg) | 26M | $24 | $0.92 |
-| High (50 req/s sustained) | 130M | $24 | $0.18 |
-| Peak (56 req/s saturated) | 145M | $24 | $0.17 |
+| High (200 req/s sustained) | 518M | $24 | $0.05 |
+| Peak (232 req/s saturated) | 601M | $24 | $0.04 |
 
-The application delivers exceptional cost efficiency. At $0.17 per million requests, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
+The application delivers exceptional cost efficiency. At $0.04 per million requests, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
 
 ---
 
@@ -183,26 +183,26 @@ At a 15-second average recovery time, the system can sustain approximately 864 c
 
 ### 1. CPU (Primary Bottleneck)
 
-With 2 vCPUs shared across 9 containers and 24 Gunicorn request handlers, CPU is the tightest resource.
+With 2 vCPUs shared across 11 containers and 36 Gunicorn request handlers (3 instances x 3 workers x 4 threads), CPU is the tightest resource.
 
 **Saturation point:** At 200+ concurrent users, total CPU demand exceeds 100% (129% at 500 VU). The kernel time-slices between processes, adding context switching latency.
 
-**Observed behavior:** Throughput plateaus at ~56 req/s regardless of concurrent user count, confirming CPU-bound behavior.
+**Observed behavior:** Throughput reaches ~232 req/s at Gold tier, with CPU as the limiting factor.
 
 **Mitigation:** Vertical scaling (larger droplet) provides the most direct improvement. A 4-vCPU droplet would approximately double throughput.
 
 ### 2. Database Connections
 
-PostgreSQL default `max_connections` is 100. Current usage with `gthread` workers: 3 instances x 4 workers x 2 threads = up to 24 connections.
+PostgreSQL `max_connections` is set to 200 in docker-compose.yml. Current usage with `gthread` workers: 3 instances x 3 workers x 4 threads = up to 36 connections.
 
 | Scale | Max Connections | Headroom |
 |---|---|---|
-| 3 instances x 8 handlers | 24 | 76 remaining |
-| 5 instances x 8 handlers | 40 | 60 remaining |
-| 10 instances x 8 handlers | 80 | 20 remaining |
-| 10 instances x 16 handlers | 160 | **Exceeds limit** |
+| 3 instances x 12 handlers | 36 | 164 remaining |
+| 5 instances x 12 handlers | 60 | 140 remaining |
+| 10 instances x 12 handlers | 120 | 80 remaining |
+| 15 instances x 12 handlers | 180 | 20 remaining |
 
-**Saturation point:** ~80 connections before PostgreSQL performance degrades. At that point, introduce a connection pooler like PgBouncer.
+**Saturation point:** ~160 connections before PostgreSQL performance degrades. At that point, introduce a connection pooler like PgBouncer.
 
 ### 3. Database Write Throughput
 
@@ -302,6 +302,6 @@ The current setup (2 vCPUs, 4GB RAM, 2GB swap, 3 Flask instances with gthread wo
 1. Move PostgreSQL to a managed database (DigitalOcean Managed Databases, ~$15/month) -- eliminates single point of failure for data
 2. Move Redis to a managed instance or add a dedicated cache droplet
 3. Use multiple droplets behind a DigitalOcean Load Balancer ($12/month) -- horizontal CPU scaling
-4. Introduce PgBouncer for connection pooling -- required above ~80 concurrent handlers
+4. Introduce PgBouncer for connection pooling -- required above ~160 concurrent handlers
 5. Add read replicas if read traffic dominates -- offload list/stats queries
 6. Archive old events to object storage (DigitalOcean Spaces, $5/month) -- keep events table size bounded

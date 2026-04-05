@@ -99,15 +99,15 @@ This document records the rationale behind major technology and design choices.
 
 ## DEC-006: Docker Compose for Orchestration
 
-**Decision:** Use Docker Compose to orchestrate all 9 services.
+**Decision:** Use Docker Compose to orchestrate all 11 services.
 
-**Context:** The hackathon requires deploying to a single DigitalOcean droplet. The system includes 9 components that need to start in a specific order with health check dependencies.
+**Context:** The hackathon requires deploying to a single DigitalOcean droplet. The system includes 11 components that need to start in a specific order with health check dependencies.
 
 **Rationale:**
 - Docker Compose handles service dependency ordering via `depends_on` with `condition: service_healthy`, ensuring Flask instances don't start until PostgreSQL and Redis are ready.
 - The `restart: unless-stopped` policy provides automatic recovery for chaos engineering scenarios (killing containers to demonstrate resilience).
 - Named volumes (`postgres_data`, `prometheus_data`, `grafana_data`) persist data across container restarts and redeployments.
-- All 9 services are defined in a single `docker-compose.yml` file, making the entire system reproducible with a single `docker compose up`.
+- All 11 services are defined in a single `docker-compose.yml` file, making the entire system reproducible with a single `docker compose up`.
 
 **Tradeoffs:**
 - Docker Compose runs on a single host, so there is no cross-node redundancy. The database is a single point of failure.
@@ -117,20 +117,20 @@ This document records the rationale behind major technology and design choices.
 
 ## DEC-007: Gunicorn as the WSGI Server
 
-**Decision:** Use Gunicorn with 4 sync workers per instance as the production WSGI server.
+**Decision:** Use Gunicorn with gthread workers (3 workers x 4 threads) per instance as the production WSGI server.
 
 **Context:** Flask's built-in development server (`flask run`) is single-threaded and not suitable for production traffic.
 
 **Rationale:**
 - Gunicorn pre-forks worker processes, allowing each Flask instance to handle multiple concurrent requests.
-- 4 workers per instance, across 3 instances, provides 12 concurrent request handlers.
-- Sync workers (the default) pair well with Peewee's synchronous database access pattern.
+- 3 workers x 4 threads per instance, across 3 instances, provides 36 concurrent request handlers.
+- `gthread` workers use threads within each worker process, reducing memory overhead compared to pure sync workers while improving throughput for I/O-bound operations (database queries, Redis lookups).
 - The `--timeout 120` setting prevents worker starvation under sustained load.
 - `--access-logfile -` logs requests to stdout, which Docker captures and makes available via `docker compose logs`.
 
 **Tradeoffs:**
-- Sync workers block during database I/O. Under heavy write load, a worker is occupied for the full duration of the INSERT. This is acceptable given the request profile (most redirects are fast reads).
-- Memory usage scales linearly with worker count. Each worker loads a full copy of the Flask application.
+- Threaded workers share GIL within each process, so CPU-bound work within a single worker is serialized. This is acceptable because the workload is I/O-bound (database queries, Redis lookups).
+- Memory usage scales with worker count (each worker loads a full copy of the Flask application), but threads within a worker share memory, making gthread more memory-efficient than pure sync workers at the same concurrency level.
 
 ---
 
@@ -145,11 +145,11 @@ This document records the rationale behind major technology and design choices.
 - The `prometheus_client` Python library integrates natively, providing Counters, Histograms, and Gauges with minimal code.
 - Pull-based scraping (Prometheus scrapes `/metrics` every 10 seconds) requires no push infrastructure or additional dependencies in the application.
 - Grafana provides pre-built visualization for Prometheus data with a provisioning system that allows dashboards to be version-controlled as JSON files.
-- Alertmanager routes alerts based on severity, with configurable receivers (Discord webhooks for this project).
+- Alertmanager routes alerts based on severity to a webhook receiver that logs alerts locally and optionally forwards them to Discord.
 - 7-day data retention in Prometheus is sufficient for the hackathon evaluation period.
 
 **Tradeoffs:**
-- Three additional containers (Prometheus, Grafana, Alertmanager) consume memory on the resource-constrained droplet.
+- Five additional containers (Prometheus, Grafana, Alertmanager, Node Exporter, Webhook Receiver) consume memory on the resource-constrained droplet.
 - The Grafana dashboard JSON file is verbose (1000+ lines) but is auto-provisioned, requiring no manual setup.
 
 ---
@@ -229,3 +229,40 @@ This document records the rationale behind major technology and design choices.
 **Tradeoffs:**
 - No way to derive the original URL from the short code (by design).
 - Slightly more database writes on collision (statistically negligible).
+
+---
+
+## DEC-013: Webhook Receiver with Optional Discord Forwarding
+
+**Decision:** Use a custom webhook receiver as the Alertmanager notification target instead of sending directly to Discord.
+
+**Context:** Alertmanager supports sending alerts directly to external webhook URLs (such as Discord). However, relying solely on an external service for alert logging means alert history is lost if the external service is unavailable, and there is no local evidence trail for incident investigation.
+
+**Rationale:**
+- The webhook receiver logs all alerts locally to `/var/log/alerts.log` (append-only structured JSON) and writes individual evidence files to `/app/evidence/`. This provides a persistent, self-contained audit trail regardless of external service availability.
+- Discord forwarding is optional, configured via the `DISCORD_WEBHOOK_URL` environment variable. When not set, the receiver still logs everything locally.
+- Individual evidence JSON files (named `alert_{name}_{status}_{timestamp}.json`) make it straightforward to investigate specific incidents and provide hackathon evidence.
+- The receiver is a minimal Python HTTP server with zero external dependencies (stdlib only), keeping the container image small and fast to start.
+- The evidence directory is mounted as a Docker volume, persisting files across container restarts.
+
+**Tradeoffs:**
+- Adds one more container to the stack (11 total instead of 10).
+- Requires maintaining a small custom application (though it is ~100 lines of stdlib Python with no dependencies).
+- Alert delivery to Discord is now two hops (Alertmanager -> Webhook Receiver -> Discord) instead of one, adding marginal latency to external notifications.
+
+---
+
+## DEC-014: Node Exporter for Host Metrics
+
+**Decision:** Deploy Node Exporter to collect host-level system metrics (CPU, RAM, disk, network).
+
+**Context:** Application-level metrics from Flask (`http_requests_total`, `http_request_duration_seconds`, etc.) show how the application is performing, but do not reveal whether the underlying host is the bottleneck. During load testing, we needed to correlate application latency with host CPU saturation.
+
+**Rationale:**
+- Node Exporter exposes standard system metrics in Prometheus format, allowing infrastructure alert rules (HostHighCpuUsage, HostHighMemoryUsage, HostDiskSpaceLow, HostNetworkErrors) to fire based on actual host conditions.
+- Running with `pid: host` and read-only mounts for `/proc`, `/sys`, and `/` provides accurate host-level metrics from inside a container.
+- CPU saturation was identified as the primary bottleneck during load testing. Node Exporter's `node_cpu_seconds_total` metric enabled the HostHighCpuUsage alert that fired at 96.68% during chaos experiments.
+
+**Tradeoffs:**
+- Adds one more container and requires `pid: host` and read-only host filesystem mounts, which slightly increases the attack surface.
+- Minimal resource overhead (~10-15 MB memory).

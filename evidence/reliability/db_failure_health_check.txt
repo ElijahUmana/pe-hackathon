@@ -1,0 +1,39 @@
+=== DB KILL EXPERIMENT ===
+NOTE: Running against current deployed code (before health check fix).
+The fix in app/__init__.py replaces `db.connect(reuse_if_open=True)` with
+a fresh connection check via `db.is_closed()` / `db.connect()` to avoid
+returning stale pooled connections.
+
+=== BEFORE DB KILL ===
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+=== KILLING DB ===
+Sun Apr  5 05:21:37 AM UTC 2026
+ Container pe-hackathon-db-1 Killing
+ Container pe-hackathon-db-1 Killed
+
+=== 5 SECONDS AFTER DB KILL ===
+Sun Apr  5 05:21:42 AM UTC 2026
+Health check response:
+{
+  "database": "connected",
+  "status": "ok"
+}
+BUG: Health check falsely reports DB as connected due to pooled/cached connection.
+The fix forces a fresh connection check that will correctly detect DB failure.
+
+=== RESTARTING DB ===
+Sun Apr  5 05:21:42 AM UTC 2026
+ Container pe-hackathon-db-1 Starting
+ Container pe-hackathon-db-1 Started
+
+=== 15 SECONDS AFTER DB RESTART ===
+Sun Apr  5 05:21:58 AM UTC 2026
+Health check response:
+{
+  "database": "connected",
+  "status": "ok"
+}

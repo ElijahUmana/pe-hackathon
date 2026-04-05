@@ -4,7 +4,7 @@
 
 - A server with Docker and Docker Compose installed (tested on CentOS 9 Stream, Ubuntu 22.04+)
 - Minimum: 2 vCPUs, 4GB RAM (recommended for all 3 hackathon performance tiers)
-- Ports 80, 3000, 9090, 9093 available
+- Ports 80, 3000, 9090, 9093, 9094 available
 - SSH access to the server
 - (Optional) A domain name pointed at your server IP
 
@@ -21,7 +21,7 @@ doctl compute droplet create url-shortener \
   --ssh-keys <your-ssh-key-fingerprint>
 ```
 
-The `docker-20-04` image comes with Docker and Docker Compose pre-installed. The s-2vcpu-4gb size ($24/month) provides 2 vCPUs, 4GB RAM, and 80GB SSD -- enough to comfortably run all 9 containers and pass the Gold-tier load test.
+The `docker-20-04` image comes with Docker and Docker Compose pre-installed. The s-2vcpu-4gb size ($24/month) provides 2 vCPUs, 4GB RAM, and 80GB SSD -- enough to comfortably run all 11 containers and pass the Gold-tier load test.
 
 ### 2. SSH Into the Droplet
 
@@ -65,12 +65,14 @@ For Docker Compose, environment variables are set directly in `docker-compose.ym
 nano docker-compose.yml
 ```
 
-For Alertmanager, configure your Discord webhook:
+For Discord alert forwarding (optional), set the `DISCORD_WEBHOOK_URL` environment variable:
 
 ```bash
-nano alertmanager/alertmanager.yml
-# Replace the webhook URL with your actual Discord webhook URL
+# Create a .env file with your Discord webhook URL (optional)
+echo 'DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...' >> .env
 ```
+
+The webhook receiver logs all alerts locally regardless of whether Discord is configured. Alerts are written to `/var/log/alerts.log` and individual evidence JSON files in the `evidence/` directory.
 
 ## Docker Compose Deployment
 
@@ -81,7 +83,7 @@ cd /opt/url-shortener
 docker compose up --build -d
 ```
 
-This starts 9 containers:
+This starts 11 containers:
 1. `db` -- PostgreSQL 16
 2. `redis` -- Redis 7
 3. `app1` -- Flask + Gunicorn (instance 1)
@@ -91,6 +93,8 @@ This starts 9 containers:
 7. `prometheus` -- Metrics collector
 8. `grafana` -- Dashboard UI
 9. `alertmanager` -- Alert routing
+10. `node-exporter` -- Host system metrics (CPU, RAM, disk, network)
+11. `webhook-receiver` -- Alert logging with optional Discord forwarding
 
 ### Check Container Status
 
@@ -305,7 +309,7 @@ Then increase Gunicorn workers in the Dockerfile:
 CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "8", ...]
 ```
 
-The Gunicorn worker count formula: `2 * num_cpus + 1`. For 2 vCPUs, use 5 workers. For 4 vCPUs, use 9 workers.
+The Gunicorn worker count formula: `2 * num_cpus + 1`. For 2 vCPUs, use 5 workers (current: 3 workers x 4 threads). For 4 vCPUs, use 9 workers.
 
 ### Scale Down
 
@@ -469,7 +473,7 @@ data = json.load(sys.stdin)
 for group in data['data']['activeTargets']:
     print(f\"{group['labels']['instance']}: {group['health']}\")
 "
-# Expected: app1:5000: up, app2:5000: up, app3:5000: up
+# Expected: app1:5000: up, app2:5000: up, app3:5000: up, node-exporter:9100: up
 
 # 2. Verify metrics are being collected
 curl -s 'http://localhost:9090/api/v1/query?query=up{job="flask-app"}' | python3 -m json.tool

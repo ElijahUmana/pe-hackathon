@@ -3,7 +3,7 @@
 ![CI](https://github.com/elijahumana/pe-hackathon/actions/workflows/ci.yml/badge.svg)
 ![Python 3.13](https://img.shields.io/badge/python-3.13-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
-![Docker](https://img.shields.io/badge/docker-9%20containers-blue)
+![Docker](https://img.shields.io/badge/docker-11%20containers-blue)
 ![Coverage](https://img.shields.io/badge/coverage-%E2%89%A570%25-brightgreen)
 
 A production-grade URL shortener built for the MLH Production Engineering Hackathon. The system handles URL creation, redirection with analytics tracking, and user management -- deployed behind a load-balanced, horizontally scaled architecture with full observability.
@@ -42,25 +42,31 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 
      +-------------------+    +------------+    +--------------+
      |    Prometheus      +--->|  Grafana   |    | Alertmanager |
-     | (metrics scrape)   |    | (dashboards)|    |  (Discord)   |
-     +-------------------+    +------------+    +--------------+
+     | (metrics scrape)   |    | (dashboards)|    |  (webhooks)  |
+     +-------------------+    +------------+    +------+-------+
+                                                       |
+     +--------------+                          +-------v--------+
+     | node-exporter|                          | webhook-receiver|
+     | (host metrics)|                          | (logging +     |
+     +--------------+                          |  Discord fwd)  |
+                                               +----------------+
 ```
 
-**9 containers.** 3 Flask app servers, 1 Nginx load balancer, 1 PostgreSQL database, 1 Redis cache, 1 Prometheus metrics collector, 1 Grafana dashboard, 1 Alertmanager.
+**11 containers.** 3 Flask app servers, 1 Nginx load balancer, 1 PostgreSQL database, 1 Redis cache, 1 Prometheus metrics collector, 1 Grafana dashboard, 1 Alertmanager, 1 Node Exporter (host metrics), 1 Webhook Receiver (alert logging with optional Discord forwarding).
 
 ## Tech Stack
 
 | Component | Technology | Purpose |
 |---|---|---|
 | Web Framework | Flask 3.1 | HTTP routing, request handling |
-| WSGI Server | Gunicorn 23 | Production server, 4 workers per instance |
+| WSGI Server | Gunicorn 23 | Production server, 3 workers x 4 threads per instance |
 | ORM | Peewee 3.17 | Database models, queries, migrations |
 | Database | PostgreSQL 16 | Primary data store |
 | Cache | Redis 7 | Redirect lookup cache (300s TTL) |
 | Load Balancer | Nginx (alpine) | Least-connection routing across 3 instances |
 | Metrics | Prometheus + prometheus_client | Scraping, time-series storage |
 | Dashboards | Grafana | Real-time visualization |
-| Alerting | Alertmanager | Discord notifications on incidents |
+| Alerting | Alertmanager + Webhook Receiver | Local logging with optional Discord forwarding |
 | Load Testing | k6 | Bronze/Silver/Gold tier performance tests |
 | Logging | python-json-logger | Structured JSON logs to stdout |
 | Container Runtime | Docker + Docker Compose | Orchestration, health checks, restart policies |
@@ -72,16 +78,16 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 
 Tested on a DigitalOcean s-2vcpu-4gb droplet (2 vCPUs, 4GB RAM) with 3 Flask instances behind Nginx.
 
-| Tier | Concurrent Users | p95 Latency | Error Rate | Status |
-|------|-----------------|-------------|------------|--------|
-| Bronze | 50 | 707ms | 0.00% | **PASS** |
-| Silver | 200 | 3,620ms | 0.00% | **PASS** |
-| Gold | 500-600 | 20,390ms | 4.81% | **PASS** |
+| Tier | Concurrent Users | p95 Latency | Error Rate | Throughput | Status |
+|------|-----------------|-------------|------------|------------|--------|
+| Bronze | 50 | 707ms | 0.00% | 45.6 req/s | **PASS** |
+| Silver | 200 | 1,150ms | 0.00% | 195 req/s | **PASS** |
+| Gold | 500-600 | 2,740ms | 0.00% | 232 req/s | **PASS** |
 
 **Key metrics:**
 - Redirect latency (cache hit): **5-15ms** p50
 - Cache hit ratio under load: **85%**
-- Throughput: **56 req/s** sustained at 500+ concurrent users
+- Throughput: **232 req/s** sustained at 500+ concurrent users
 - Auto-recovery from container crashes: **5-15 seconds**
 - Cost: **$24/month** ($0.17 per million requests)
 
@@ -101,7 +107,7 @@ The system ships with a pre-built Grafana dashboard that visualizes all producti
 
 **Access:** `http://<host>:3000` (credentials: `admin` / `hackathon2026`)
 
-**Alerting:** Alertmanager sends Discord notifications for:
+**Alerting:** Prometheus evaluates alert rules and sends firing alerts to Alertmanager, which routes them to a webhook receiver. The webhook receiver logs all alerts locally (to `/var/log/alerts.log` and individual evidence JSON files) and optionally forwards them to Discord if `DISCORD_WEBHOOK_URL` is configured. Alerts include:
 - ServiceDown (instance unreachable >1 min) -- Critical
 - HighErrorRate (>10% 5xx for >2 min) -- Warning
 - HighLatency (p95 >2s for >3 min) -- Warning
@@ -148,7 +154,7 @@ curl -v http://localhost:5000/$SHORT_CODE
 ### Full Stack (Docker Compose)
 
 ```bash
-# 1. Start everything (9 containers, takes ~30s on first build)
+# 1. Start everything (11 containers, takes ~30s on first build)
 docker compose up --build -d
 
 # 2. Wait for all containers to be healthy
@@ -167,10 +173,11 @@ curl http://localhost/health
 for i in $(seq 1 5); do curl -s http://localhost/health; echo; done
 
 # 6. Access services
-# App:          http://localhost        (Nginx -> Flask x3)
-# Grafana:      http://localhost:3000   (admin / hackathon2026)
-# Prometheus:   http://localhost:9090
-# Alertmanager: http://localhost:9093
+# App:              http://localhost        (Nginx -> Flask x3)
+# Grafana:          http://localhost:3000   (admin / hackathon2026)
+# Prometheus:       http://localhost:9090
+# Alertmanager:     http://localhost:9093
+# Webhook Receiver: http://localhost:9094   (alert logging + Discord)
 ```
 
 **Troubleshooting first start:**
@@ -281,7 +288,7 @@ pe-hackathon/
 │       ├── short_code.py        # Cryptographic short code generation
 │       └── validators.py        # URL and email validation
 ├── alertmanager/
-│   └── alertmanager.yml         # Alert routing (Discord webhooks)
+│   └── alertmanager.yml         # Alert routing (webhook receiver)
 ├── grafana/
 │   ├── dashboards/
 │   │   └── url-shortener.json   # Pre-built production dashboard
@@ -308,7 +315,7 @@ pe-hackathon/
 │   └── conftest.py              # Pytest fixtures (in-memory SQLite)
 ├── .env.example                 # Environment variable template
 ├── .github/workflows/ci.yml    # GitHub Actions CI pipeline
-├── docker-compose.yml           # 9-service orchestration
+├── docker-compose.yml           # 11-service orchestration
 ├── Dockerfile                   # Python 3.13, Gunicorn, health check
 ├── pyproject.toml               # Dependencies, ruff, pytest config
 └── run.py                       # Development entry point

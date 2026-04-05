@@ -27,7 +27,9 @@ graph TB
     subgraph "Observability"
         Prom[Prometheus<br/>Metrics Scraper<br/>10s interval]
         Grafana[Grafana<br/>Dashboards]
-        AM[Alertmanager<br/>Discord Alerts]
+        AM[Alertmanager<br/>Alert Routing]
+        NE[Node Exporter<br/>Host Metrics]
+        WH[Webhook Receiver<br/>Logging + Discord]
     end
 
     Client -->|HTTP :80| Nginx
@@ -46,7 +48,9 @@ graph TB
     Prom -->|scrape /metrics| App1
     Prom -->|scrape /metrics| App2
     Prom -->|scrape /metrics| App3
+    Prom -->|scrape /metrics| NE
     Prom --> AM
+    AM --> WH
     Grafana --> Prom
 ```
 
@@ -371,11 +375,16 @@ Flask (app1,2,3)             Prometheus                 Grafana
      |                           |-- alert if threshold -->|
      |                           |   exceeded              |
      |                           |                         |
+node-exporter                    |                         |
+     |-- /metrics (every 15s) -->|                         |
+     |                           |                         |
                             Alertmanager                   |
                                  |                         |
-                                 |-- Discord webhook       |
-                                 |   (critical: 10s wait)  |
-                                 |   (warning: 30s wait)   |
+                                 |-- webhook receiver      |
+                                 |   (logging + optional   |
+                                 |    Discord forwarding)  |
+                                 |   (critical: 5s wait)   |
+                                 |   (warning: 15s wait)   |
 ```
 
 **Scrape configuration:** Prometheus scrapes all 3 Flask instances every 10 seconds via their `/metrics` endpoint.
@@ -494,9 +503,9 @@ Request Flow for GET /:short_code
 
 | Resource | Pool Strategy | Size | Configuration |
 |----------|--------------|------|---------------|
-| PostgreSQL connections | One connection per Gunicorn thread, opened in `before_request`, closed in `teardown_appcontext` | 3 instances x 4 workers x 2 threads = 24 max | Peewee's `connect(reuse_if_open=True)` |
-| Redis connections | Singleton client per process, reused across requests | 1 per worker process = 12 max | `redis.from_url()` with connection pooling |
-| Nginx upstream connections | Kept alive per-worker | 1024 `worker_connections` | Configured in `nginx.conf` events block |
+| PostgreSQL connections | One connection per Gunicorn thread, opened in `before_request`, closed in `teardown_appcontext` | 3 instances x 3 workers x 4 threads = 36 max | Peewee's `connect(reuse_if_open=True)` |
+| Redis connections | Singleton client per process, reused across requests | 1 per worker process = 9 max | `redis.from_url()` with connection pooling |
+| Nginx upstream connections | Kept alive per-worker | 4096 `worker_connections` | Configured in `nginx.conf` events block |
 
 ### Load Balancing Algorithm
 
@@ -533,6 +542,10 @@ Under round-robin, a server handling multiple slow requests (cache misses, creat
 Flask App (app1:5000) ----+
 Flask App (app2:5000) ----+----> Prometheus (:9090)
 Flask App (app3:5000) ----+          |
+                                     |
+                              Scrape Interval: 15s
+Node Exporter (:9100) ------------->+
+                                     |
                                      |-- Store in TSDB (7-day retention)
                                      |
                                      |-- Evaluate alert rules (every 15s)
@@ -540,10 +553,14 @@ Flask App (app3:5000) ----+          |
                                      |       +--[FIRING]--> Alertmanager (:9093)
                                      |                           |
                                      |                           +-- Route by severity
-                                     |                           |     critical: 10s group_wait
-                                     |                           |     warning: 30s group_wait
+                                     |                           |     critical: 5s group_wait
+                                     |                           |     warning: 15s group_wait
                                      |                           |
-                                     |                           +-- Send to Discord webhook
+                                     |                           +-- Webhook Receiver (:9094)
+                                     |                                |
+                                     |                                +-- Log to /var/log/alerts.log
+                                     |                                +-- Write evidence JSON files
+                                     |                                +-- Forward to Discord (optional)
                                      |
                                      +-- Serve queries --> Grafana (:3000)
                                                               |
@@ -560,8 +577,8 @@ When a threshold is breached, the alert traverses this path:
 2. **The `for` duration must be sustained.** A brief spike is not enough -- the condition must persist for the configured duration (1m for ServiceDown, 2m for HighErrorRate, etc.).
 3. **Prometheus sends the alert to Alertmanager** via the configured `alertmanagers` endpoint.
 4. **Alertmanager groups alerts** by severity. Multiple alerts of the same severity within the `group_wait` window are batched into a single notification.
-5. **Alertmanager sends a Discord webhook** containing the alert name, severity, affected instance, and human-readable description.
-6. **When the condition resolves**, Prometheus sends a resolution notification, and Alertmanager delivers a "resolved" message to Discord.
+5. **Alertmanager sends the alert to the webhook receiver** (port 9094) which logs it to `/var/log/alerts.log` and writes an individual evidence JSON file. If `DISCORD_WEBHOOK_URL` is configured, the webhook receiver also forwards the alert to Discord.
+6. **When the condition resolves**, Prometheus sends a resolution notification, and Alertmanager delivers a "resolved" message through the same webhook receiver pipeline.
 
 ### Dashboard Design
 
