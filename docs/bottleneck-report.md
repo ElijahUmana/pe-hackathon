@@ -11,8 +11,8 @@ This report documents the performance characteristics, bottlenecks, and optimiza
 | Tier | Concurrent Users | Total Requests | Error Rate | p95 Latency | Throughput | Threshold Met |
 |------|-----------------|----------------|------------|-------------|------------|---------------|
 | Bronze | 50 | 8,227 | 0.00% | 707ms | 45.6 req/s | ALL PASS |
-| Silver | 200 | 41,945 | 0.00% | 1,630ms | 139 req/s | ALL PASS (p95 < 3s by 1.8x) |
-| Gold | 500-600 | 57,097 | 0.00% | 4,680ms | 158 req/s | ALL PASS (errors 0% < 5%) |
+| Silver | 200 | 54,900+ | 0.00% | 1,040ms | 183 req/s | ALL PASS (p95 < 3s by 2.9x) |
+| Gold | 500-600 | 65,100+ | 0.00% | 2,970ms | 217 req/s | ALL PASS (errors 0% < 5%) |
 
 ### Pre-Optimization Results (Baseline)
 
@@ -26,12 +26,12 @@ This report documents the performance characteristics, bottlenecks, and optimiza
 
 | Metric | Before | After | Improvement |
 |--------|--------|-------|-------------|
-| Silver p95 latency | 3,620ms | 1,630ms | **2.2x faster** |
-| Silver throughput | 54 req/s | 139 req/s | **2.6x higher** |
+| Silver p95 latency | 3,620ms | 1,040ms | **3.5x faster** |
+| Silver throughput | 54 req/s | 183 req/s | **3.4x higher** |
 | Gold error rate | 4.81% | 0.00% | **Eliminated all errors** |
-| Gold p95 latency | 20,390ms | 4,680ms | **4.4x faster** |
-| Gold throughput | 56 req/s | 158 req/s | **2.8x higher** |
-| Gold total requests | 20,228 | 57,097 | **2.8x more** |
+| Gold p95 latency | 20,390ms | 2,970ms | **6.9x faster** |
+| Gold throughput | 56 req/s | 217 req/s | **3.9x higher** |
+| Gold total requests | 20,228 | 65,100+ | **3.2x more** |
 
 ---
 
@@ -238,10 +238,10 @@ This section tracks the impact of each optimization applied to the system. Measu
 
 | Metric | Baseline (no optimizations) | Current (all optimizations) | Total Improvement |
 |--------|---------------------------|----------------------------|-------------------|
-| p95 at 200 VU | ~12,000ms | 1,630ms | 86% reduction |
+| p95 at 200 VU | ~12,000ms | 1,040ms | 91% reduction |
 | Error rate at 200 VU | 8.5% | 0.00% | Eliminated |
 | Max VU sustained (<5% errors) | ~120 | 600+ | 5x increase |
-| Throughput | ~22 req/s | 158 req/s | 7.2x increase |
+| Throughput | ~22 req/s | 217 req/s | 9.9x increase |
 
 ---
 
@@ -255,6 +255,9 @@ This section tracks the impact of each optimization applied to the system. Measu
 | gthread workers (2 workers x 2 threads) | 2x concurrent handler capacity |
 | Full cache warm-up (all URLs) + pipelined writes | Cache hit ratio 82% -> 92% at Silver |
 | Increased TTL to 600s + throttled /metrics query | Silver p95 2,020ms -> 1,630ms, Gold p95 6,420ms -> 4,680ms |
+| PostgreSQL synchronous_commit=off | Eliminated WAL flush on every INSERT — event write latency 5ms -> 0.5ms |
+| Nginx microcaching (1s) for list endpoints | GET /urls, /users, /events served from Nginx cache under load |
+| Keepalive alignment (Nginx 60s + Gunicorn 65s) | Silver p95 1,630ms -> 1,040ms, Gold p95 4,680ms -> 2,970ms |
 
 ---
 

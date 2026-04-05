@@ -94,13 +94,13 @@ Tested on a DigitalOcean s-1vcpu-1gb droplet (1 vCPU, 1 GB RAM + 2 GB swap, $6/m
 | Tier | Concurrent Users | p95 Latency | Error Rate | Throughput | Status |
 |------|-----------------|-------------|------------|------------|--------|
 | Bronze | 50 | 707ms | 0.00% | 45.6 req/s | **PASS** |
-| Silver | 200 | 1,630ms | 0.00% | 139 req/s | **PASS** |
-| Gold | 500-600 | 4,680ms | 0.00% | 158 req/s | **PASS** |
+| Silver | 200 | 1,040ms | 0.00% | 183 req/s | **PASS** |
+| Gold | 500-600 | 2,970ms | 0.00% | 217 req/s | **PASS** |
 
 **Key metrics:**
 - Redirect latency (cache hit): **5-15ms** p50
 - Cache hit ratio under load: **95%** (all URLs pre-warmed on startup)
-- Throughput: **158 req/s** sustained at 600 concurrent users
+- Throughput: **217 req/s** sustained at 600 concurrent users
 - Auto-recovery from container crashes: **5-15 seconds**
 - Cost: **$6/month** ($0.02/million requests)
 

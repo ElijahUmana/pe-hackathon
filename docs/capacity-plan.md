@@ -67,7 +67,7 @@ Each Flask instance runs 2 Gunicorn `gthread` workers with 2 threads each, provi
 
 **3-instance cluster theoretical max:** ~960 req/s (theoretical, limited by CPU before reaching this)
 
-**Observed cluster throughput:** ~158 req/s sustained at 600 VU (CPU-bound)
+**Observed cluster throughput:** ~217 req/s sustained at 600 VU (CPU-bound)
 
 ### Realistic Throughput
 
@@ -76,8 +76,8 @@ With the hackathon's traffic mix (70% redirects, 15% reads, 10% creates, 5% heal
 | Tier | Concurrent Users | Observed req/s | p95 Latency | Error Rate | Status |
 |---|---|---|---|---|---|
 | Bronze | 50 | 45.6 | 707ms | 0.00% | **PASS** |
-| Silver | 200 | 139 | 1,630ms | 0.00% | **PASS** (p95 < 3s by 1.8x) |
-| Gold | 500-600 | 158 | 4,680ms | 0.00% | **PASS** (errors 0% < 5%) |
+| Silver | 200 | 183 | 1,040ms | 0.00% | **PASS** (p95 < 3s by 2.9x) |
+| Gold | 500-600 | 217 | 2,970ms | 0.00% | **PASS** (errors 0% < 5%) |
 
 ---
 
@@ -89,7 +89,7 @@ Projected performance based on observed data, scaling linearly with CPU (primary
 
 | Droplet | vCPUs | RAM | Projected Max VU (p95 < 5s) | Projected Throughput | Monthly Cost |
 |---|---|---|---|---|---|
-| **s-1vcpu-1gb** (current) | **1** | **1 GB** | **~400** | **~158 req/s** | **$6** |
+| **s-1vcpu-1gb** (current) | **1** | **1 GB** | **~400** | **~217 req/s** | **$6** |
 | s-1vcpu-2gb | 1 | 2 GB | ~450 | ~175 req/s | $12 |
 | s-2vcpu-2gb | 2 | 2 GB | ~800 | ~320 req/s | $18 |
 | s-2vcpu-4gb | 2 | 4 GB | ~900 | ~340 req/s | $24 |
@@ -188,7 +188,7 @@ With 1 vCPU shared across 11 containers and 12 Gunicorn request handlers (3 inst
 
 **Saturation point:** At 200+ concurrent users, total CPU demand exceeds 100%. The kernel time-slices between processes, adding context switching latency.
 
-**Observed behavior:** Throughput reaches ~158 req/s at Gold tier, with CPU as the limiting factor.
+**Observed behavior:** Throughput reaches ~217 req/s at Gold tier, with CPU as the limiting factor.
 
 **Mitigation:** Vertical scaling (larger droplet) provides the most direct improvement. A 2-vCPU droplet would approximately double throughput.
 
@@ -213,7 +213,7 @@ Every redirect writes an event row. Under Gold-tier load (500 VUs, ~80% redirect
 - PostgreSQL on SSD can handle ~5,000-10,000 simple INSERTs per second
 - The events table has no complex indexes, so insert performance is good
 
-**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~158 req/s total, this limit is far away.
+**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~217 req/s total, this limit is far away.
 
 ### 4. Redis Memory
 
