@@ -1,0 +1,63 @@
+=== CHAOS EXPERIMENT 4: Kill Database ===
+Timestamp: 2026-04-05T02:48:47Z
+
+--- Pre-state health ---
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+
+--- Action: Killing PostgreSQL ---
+ Container pe-hackathon-db-1 Killing 
+ Container pe-hackathon-db-1 Killed 
+
+--- Health check with DB down ---
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+
+--- Request attempts with DB down ---
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+HTTP Code: 200
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+HTTP Code: 200
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+HTTP Code: 200
+
+--- Observation: Health check showed connected (connection pool caching). Checking actual write operation ---
+<html>
+  <head>
+    <title>Internal Server Error</title>
+  </head>
+  <body>
+    <h1><p>Internal Server Error</p></h1>
+    
+  </body>
+</html>
+
+
+--- Restarting DB ---
+ Container pe-hackathon-db-1 Starting 
+ Container pe-hackathon-db-1 Started 
+
+--- Post-recovery write ---
+{
+  "error": "Method not allowed"
+}
+
+RESULT: App connection pooling masked initial DB failure. Write operations reveal actual DB state.

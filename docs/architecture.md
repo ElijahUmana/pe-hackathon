@@ -50,7 +50,11 @@ graph TB
     Grafana --> Prom
 ```
 
-## Data Flow: URL Creation
+## Detailed Data Flow Diagrams
+
+Each operation is traced end-to-end through every system component, showing the exact sequence of internal calls, cache interactions, and database queries.
+
+### Data Flow: URL Creation
 
 ```
 Client                 Nginx              Flask              PostgreSQL         Redis
@@ -125,6 +129,109 @@ Client                 Nginx              Flask                               Re
 ```
 
 On cache hit, PostgreSQL is still contacted to record the redirect event, but the URL lookup itself is skipped.
+
+### Data Flow: URL Delete (Soft Delete)
+
+```
+Client                 Nginx              Flask              PostgreSQL         Redis
+  |                      |                  |                     |               |
+  |-- DELETE /urls/42 -->|                  |                     |               |
+  |                      |-- proxy -------->|                     |               |
+  |                      |                  |-- SELECT url ------>|               |
+  |                      |                  |   WHERE id=42       |               |
+  |                      |                  |<-- url_obj ---------|               |
+  |                      |                  |                     |               |
+  |                      |                  |-- UPDATE url ------>|               |
+  |                      |                  |   SET is_active=F   |               |
+  |                      |                  |<-- ok --------------|               |
+  |                      |                  |                     |               |
+  |                      |                  |-- INSERT event ---->|               |
+  |                      |                  |   (type=deleted)    |               |
+  |                      |                  |                     |               |
+  |                      |                  |-- DEL url:code ------------>|
+  |                      |                  |   (cache invalidate)        |
+  |                      |                  |                     |               |
+  |                      |<-- 204 ---------|                     |               |
+  |<-- 204 --------------|                  |                     |               |
+```
+
+The soft delete sets `is_active = false` rather than removing the row. The cache key for this short code is explicitly deleted so that subsequent redirect attempts immediately see the URL as inactive (rather than waiting for TTL expiry).
+
+### Data Flow: URL Update
+
+```
+Client                 Nginx              Flask              PostgreSQL         Redis
+  |                      |                  |                     |               |
+  |-- PUT /urls/42 ----->|                  |                     |               |
+  |  {"url": "...",      |-- proxy -------->|                     |               |
+  |   "is_active": true} |                  |                     |               |
+  |                      |                  |-- SELECT url ------>|               |
+  |                      |                  |   WHERE id=42       |               |
+  |                      |                  |<-- url_obj ---------|               |
+  |                      |                  |                     |               |
+  |                      |                  |-- validate new URL  |               |
+  |                      |                  |   (urlparse check)  |               |
+  |                      |                  |                     |               |
+  |                      |                  |-- UPDATE url ------>|               |
+  |                      |                  |   SET original_url, |               |
+  |                      |                  |       is_active     |               |
+  |                      |                  |<-- ok --------------|               |
+  |                      |                  |                     |               |
+  |                      |                  |-- INSERT event x2 ->|               |
+  |                      |                  |   (one per changed  |               |
+  |                      |                  |    field)           |               |
+  |                      |                  |                     |               |
+  |                      |                  |-- DEL url:code ------------>|
+  |                      |                  |   (cache invalidate)        |
+  |                      |                  |                     |               |
+  |                      |<-- 200 + JSON ---|                     |               |
+  |<-- 200 + JSON -------|                  |                     |               |
+```
+
+Each changed field generates a separate `updated` event with the field name and new value. Cache invalidation ensures the next redirect for this short code fetches fresh data from PostgreSQL.
+
+### Data Flow: User CRUD
+
+```
+Client                 Nginx              Flask              PostgreSQL
+  |                      |                  |                     |
+  |== POST /users ======>|                  |                     |
+  |  {"username":"...",   |-- proxy -------->|                     |
+  |   "email":"..."}     |                  |-- validate email    |
+  |                      |                  |   (format check)    |
+  |                      |                  |                     |
+  |                      |                  |-- INSERT user ------>|
+  |                      |                  |   (unique check on   |
+  |                      |                  |    username + email)  |
+  |                      |                  |<-- user_obj ---------|
+  |                      |<-- 201 + JSON ---|                     |
+  |<-- 201 + JSON -------|                  |                     |
+  |                      |                  |                     |
+  |== GET /users ========>|                 |                     |
+  |  ?page=1&per_page=25 |-- proxy -------->|                     |
+  |                      |                  |-- SELECT users ----->|
+  |                      |                  |   ORDER BY id        |
+  |                      |                  |   LIMIT 25 OFFSET 0  |
+  |                      |                  |<-- [user, ...] ------|
+  |                      |<-- 200 + JSON ---|                     |
+  |<-- 200 + JSON -------|                  |                     |
+  |                      |                  |                     |
+  |== DELETE /users/1 ===>|                 |                     |
+  |                      |-- proxy -------->|                     |
+  |                      |                  |-- SELECT user ------>|
+  |                      |                  |   WHERE id=1         |
+  |                      |                  |<-- user_obj ---------|
+  |                      |                  |                     |
+  |                      |                  |-- DELETE user ------>|
+  |                      |                  |   (hard delete)      |
+  |                      |                  |<-- ok --------------|
+  |                      |<-- 204 ---------|                     |
+  |<-- 204 --------------|                  |                     |
+```
+
+User operations are straightforward CRUD with no caching layer. User deletes are hard deletes (the row is removed), unlike URL deletes which are soft deletes. The `ON DELETE SET NULL` behavior on the `urls.user_id` foreign key means deleting a user does not cascade to their URLs -- those URLs remain in the system with `user_id = NULL`.
+
+---
 
 ## Database Schema
 
@@ -290,3 +397,211 @@ Flask (app1,2,3)             Prometheus                 Grafana
 - Instance Health (UP/DOWN)
 
 **Data retention:** Prometheus retains 7 days of time-series data.
+
+---
+
+## Security Considerations
+
+### Input Validation
+
+All user-provided data is validated before processing. The application uses a defense-in-depth approach where validation occurs at multiple layers:
+
+| Input | Validation Layer | Method | Threat Mitigated |
+|-------|-----------------|--------|------------------|
+| URL field | Application (`validators.py`) | `urlparse()` checks for `http`/`https` scheme and valid netloc | Open redirect, SSRF, protocol injection |
+| Email field | Application (`validators.py`) | Format check: `local@domain.tld` structure | Data integrity |
+| `user_id` | Application (route handler) | Type coercion to `int()`, existence check against DB | Type confusion, foreign key violation |
+| `is_active` | Application (route handler) | `isinstance(value, bool)` check | Type confusion |
+| `per_page` | Application (route handler) | `min(per_page, 100)` cap | Resource exhaustion via large result sets |
+| `Content-Type` | Application (route handler) | `request.is_json` check, rejects non-JSON bodies | Payload confusion |
+| Short code | Database (UNIQUE constraint) | Retry loop with cryptographic generation | Collision, enumeration |
+
+### SQL Injection Prevention
+
+The application uses the Peewee ORM for all database access. Peewee generates parameterized queries for all operations:
+
+```python
+# This Peewee code:
+URL.get((URL.short_code == short_code) & (URL.is_active == True))
+
+# Generates this parameterized SQL:
+# SELECT * FROM urls WHERE short_code = %s AND is_active = %s
+# Parameters: [short_code, True]
+```
+
+No raw SQL queries are used anywhere in the application. All user input passes through Peewee's query builder, which handles parameterization and escaping. This eliminates SQL injection as a vulnerability class.
+
+### No Authentication Token Storage
+
+The application does not implement authentication. There are no passwords, session tokens, API keys, or JWTs stored anywhere. This is a deliberate design choice for the hackathon scope -- the application is an open API. This means:
+
+- No risk of credential leakage from database breaches
+- No session management complexity
+- No token validation overhead on every request
+
+If authentication were added, it should use a separate identity provider (OAuth2/OIDC) rather than storing credentials in the application database.
+
+### Additional Security Properties
+
+| Property | Implementation |
+|----------|---------------|
+| Non-root container | Dockerfile creates `appuser` and switches to it via `USER appuser` |
+| No debug mode in production | `FLASK_DEBUG` is not set in `docker-compose.yml` |
+| Read-only config mounts | Nginx, Prometheus, Grafana configs are mounted with `:ro` flag |
+| Unpredictable short codes | `secrets.choice()` uses OS cryptographic RNG (not `random`) |
+| No sensitive data in logs | Structured JSON logs contain request metadata, not body content |
+| Error response sanitization | Global error handlers return generic messages, not stack traces |
+
+---
+
+## Performance Architecture
+
+### Caching Strategy
+
+The caching architecture is designed around a single observation: redirect lookups are the dominant operation (70-80% of traffic), and the working set of active URLs is small enough to fit entirely in memory.
+
+```
+Request Flow for GET /:short_code
+
+  1. Check Redis (0.3-0.8ms)
+     |
+     +-- HIT: Return cached URL, log event to PostgreSQL
+     |         Total: ~5-15ms (dominated by event INSERT)
+     |
+     +-- MISS: Query PostgreSQL (~5-20ms)
+               |
+               +-- FOUND: Cache in Redis (SETEX, 300s TTL)
+               |          Log event to PostgreSQL
+               |          Total: ~20-50ms
+               |
+               +-- NOT FOUND: Return 404
+                             No event logged, no caching
+                             Total: ~5-10ms
+```
+
+**Cache key design:** `url:{short_code}` -- The key includes the short code directly, making it O(1) to look up. No scanning or pattern matching is needed.
+
+**Cache value:** A JSON string (~150-300 bytes) containing `original_url`, `url_id`, and `user_id`. The `url_id` and `user_id` are included so the redirect event can be logged without a database read.
+
+**Why 300-second TTL:**
+- Short enough that URL updates/deletions are reflected within 5 minutes (even if cache invalidation fails)
+- Long enough that repeated redirects to the same URL within a burst hit the cache
+- Combined with explicit invalidation on PUT/DELETE, staleness is minimal in practice
+
+**Graceful degradation:** If Redis is unreachable, the `get_redis()` helper returns `None` and all cache operations are skipped. The application falls back to PostgreSQL with zero code path changes -- the same `try/except` blocks that handle cache misses also handle Redis unavailability.
+
+### Connection Pooling
+
+| Resource | Pool Strategy | Size | Configuration |
+|----------|--------------|------|---------------|
+| PostgreSQL connections | One connection per Gunicorn thread, opened in `before_request`, closed in `teardown_appcontext` | 3 instances x 4 workers x 2 threads = 24 max | Peewee's `connect(reuse_if_open=True)` |
+| Redis connections | Singleton client per process, reused across requests | 1 per worker process = 12 max | `redis.from_url()` with connection pooling |
+| Nginx upstream connections | Kept alive per-worker | 1024 `worker_connections` | Configured in `nginx.conf` events block |
+
+### Load Balancing Algorithm
+
+Nginx uses `least_conn` (least connections) routing:
+
+```
+Request arrives at Nginx:80
+  |
+  +-- Check active connection count for each upstream:
+  |     app1:5000 -- 3 active connections
+  |     app2:5000 -- 1 active connection
+  |     app3:5000 -- 4 active connections
+  |
+  +-- Route to app2 (fewest active connections)
+```
+
+**Why least_conn over round-robin:**
+
+Round-robin distributes requests evenly by count but ignores request duration. In this application, request durations vary significantly:
+- Cache hit redirect: ~5-15ms
+- Cache miss redirect: ~20-50ms
+- URL creation: ~30-80ms (involves 2 INSERTs + unique code generation)
+
+Under round-robin, a server handling multiple slow requests (cache misses, creates) would receive the same number of new requests as a server handling fast cache hits. Least-connection naturally accounts for this variance.
+
+---
+
+## Monitoring Architecture
+
+### Metrics Pipeline
+
+```
+                              Scrape Interval: 10s
+Flask App (app1:5000) ----+
+Flask App (app2:5000) ----+----> Prometheus (:9090)
+Flask App (app3:5000) ----+          |
+                                     |-- Store in TSDB (7-day retention)
+                                     |
+                                     |-- Evaluate alert rules (every 15s)
+                                     |       |
+                                     |       +--[FIRING]--> Alertmanager (:9093)
+                                     |                           |
+                                     |                           +-- Route by severity
+                                     |                           |     critical: 10s group_wait
+                                     |                           |     warning: 30s group_wait
+                                     |                           |
+                                     |                           +-- Send to Discord webhook
+                                     |
+                                     +-- Serve queries --> Grafana (:3000)
+                                                              |
+                                                              +-- 8 dashboard panels
+                                                              +-- Auto-refresh: 10s
+                                                              +-- Auto-provisioned from JSON
+```
+
+### Alert Flow
+
+When a threshold is breached, the alert traverses this path:
+
+1. **Prometheus evaluates the rule** against scraped metrics every 15 seconds.
+2. **The `for` duration must be sustained.** A brief spike is not enough -- the condition must persist for the configured duration (1m for ServiceDown, 2m for HighErrorRate, etc.).
+3. **Prometheus sends the alert to Alertmanager** via the configured `alertmanagers` endpoint.
+4. **Alertmanager groups alerts** by severity. Multiple alerts of the same severity within the `group_wait` window are batched into a single notification.
+5. **Alertmanager sends a Discord webhook** containing the alert name, severity, affected instance, and human-readable description.
+6. **When the condition resolves**, Prometheus sends a resolution notification, and Alertmanager delivers a "resolved" message to Discord.
+
+### Dashboard Design
+
+The Grafana dashboard (`grafana/dashboards/url-shortener.json`) is organized into logical sections:
+
+| Panel | Metric Source | PromQL | Purpose |
+|-------|--------------|--------|---------|
+| Request Rate | `http_requests_total` | `sum(rate(http_requests_total[1m])) by (status)` | Overall traffic volume, broken down by HTTP status code |
+| Error Rate | `http_requests_total` | `sum(rate(http_requests_total{status=~"[45].."}[5m])) / sum(rate(http_requests_total[5m]))` | Percentage of requests resulting in 4xx or 5xx |
+| Request Latency | `http_request_duration_seconds` | `histogram_quantile(0.5/0.95/0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (le))` | p50, p95, p99 latency distribution |
+| Active URLs | `active_urls` | `active_urls` | Gauge of currently active (non-deleted) URLs |
+| URLs Created | `urls_created_total` | `rate(urls_created_total[5m])` | Rate of new URL creation |
+| Redirects | `redirects_total` | `rate(redirects_total[5m])` | Rate of redirect operations |
+| Cache Hit Ratio | `cache_hits_total`, `cache_misses_total` | `sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))` | Effectiveness of the Redis caching layer |
+| Instance Health | `up` | `up{job="flask-app"}` | UP/DOWN status for each Flask instance |
+
+### Key PromQL Queries for Operators
+
+```promql
+# Overall request rate (requests per second)
+sum(rate(http_requests_total[1m]))
+
+# Error rate as a percentage
+sum(rate(http_requests_total{status=~"5.."}[5m])) / sum(rate(http_requests_total[5m])) * 100
+
+# p95 latency by endpoint
+histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, endpoint))
+
+# Cache hit ratio
+sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))
+
+# Per-instance request rate
+sum(rate(http_requests_total[1m])) by (instance)
+
+# Active URLs count
+active_urls
+
+# Redirect rate
+rate(redirects_total[5m])
+
+# Memory usage per instance (in MB)
+process_resident_memory_bytes / 1024 / 1024
+```

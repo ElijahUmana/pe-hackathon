@@ -1,0 +1,66 @@
+=== CHAOS EXPERIMENT 2: Kill Redis ===
+Timestamp: 2026-04-05T02:47:27Z
+
+--- Pre-state ---
+NAME                          STATUS
+pe-hackathon-alertmanager-1   Up 5 minutes
+pe-hackathon-app1-1           Up 7 minutes (healthy)
+pe-hackathon-app2-1           Up 41 seconds (health: starting)
+pe-hackathon-app3-1           Up 7 minutes (healthy)
+pe-hackathon-app4-1           Up 7 minutes (healthy)
+pe-hackathon-app5-1           Up 7 minutes (healthy)
+pe-hackathon-db-1             Up 7 minutes (healthy)
+pe-hackathon-grafana-1        Up 7 minutes
+pe-hackathon-nginx-1          Up 7 minutes
+pe-hackathon-prometheus-1     Up About a minute
+pe-hackathon-redis-1          Up 7 minutes (healthy)
+
+--- Action: Killing Redis ---
+ Container pe-hackathon-redis-1 Killing 
+ Container pe-hackathon-redis-1 Killed 
+
+--- Health check with Redis down ---
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+--- Service requests with Redis down ---
+Request 1: HTTP 200 in 0.010557s
+Request 2: HTTP 200 in 0.002409s
+Request 3: HTTP 200 in 0.003411s
+Request 4: HTTP 200 in 0.006361s
+Request 5: HTTP 200 in 0.007015s
+
+--- Container status with Redis down ---
+NAME                          STATUS
+pe-hackathon-alertmanager-1   Up 5 minutes
+pe-hackathon-app1-1           Up 7 minutes (healthy)
+pe-hackathon-app2-1           Up 54 seconds (healthy)
+pe-hackathon-app3-1           Up 7 minutes (healthy)
+pe-hackathon-app4-1           Up 7 minutes (healthy)
+pe-hackathon-app5-1           Up 7 minutes (healthy)
+pe-hackathon-db-1             Up 7 minutes (healthy)
+pe-hackathon-grafana-1        Up 7 minutes
+pe-hackathon-nginx-1          Up 7 minutes
+pe-hackathon-prometheus-1     Up 2 minutes
+
+--- Restarting Redis ---
+ Container pe-hackathon-redis-1 Starting 
+ Container pe-hackathon-redis-1 Started 
+
+--- Post-recovery ---
+NAME                          STATUS
+pe-hackathon-alertmanager-1   Up 6 minutes
+pe-hackathon-app1-1           Up 8 minutes (healthy)
+pe-hackathon-app2-1           Up About a minute (healthy)
+pe-hackathon-app3-1           Up 8 minutes (healthy)
+pe-hackathon-app4-1           Up 8 minutes (healthy)
+pe-hackathon-app5-1           Up 8 minutes (healthy)
+pe-hackathon-db-1             Up 8 minutes (healthy)
+pe-hackathon-grafana-1        Up 8 minutes
+pe-hackathon-nginx-1          Up 8 minutes
+pe-hackathon-prometheus-1     Up 2 minutes
+pe-hackathon-redis-1          Up 9 seconds (healthy)
+
+RESULT: Service remained available throughout Redis outage. Database fallback worked.

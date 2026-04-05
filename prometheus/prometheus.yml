@@ -19,6 +19,11 @@ scrape_configs:
           - "app1:5000"
           - "app2:5000"
           - "app3:5000"
-          - "app4:5000"
-          - "app5:5000"
+    metrics_path: /metrics
+
+  - job_name: "node-exporter"
+    scrape_interval: 15s
+    static_configs:
+      - targets:
+          - "node-exporter:9100"
     metrics_path: /metrics

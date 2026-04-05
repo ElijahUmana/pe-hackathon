@@ -1,0 +1,33 @@
+=== CHAOS EXPERIMENT 5: Restart Counts & Recovery Verification ===
+Timestamp: 2026-04-05T02:49:32Z
+
+--- Container restart counts ---
+pe-hackathon-app1-1: RestartCount=0
+pe-hackathon-app2-1: RestartCount=0
+pe-hackathon-app3-1: RestartCount=0
+pe-hackathon-app4-1: RestartCount=0
+pe-hackathon-app5-1: RestartCount=0
+pe-hackathon-db-1: RestartCount=0
+pe-hackathon-redis-1: RestartCount=0
+pe-hackathon-nginx-1: RestartCount=0
+
+--- All services healthy after chaos experiments ---
+NAME                          IMAGE                      COMMAND                  SERVICE        CREATED         STATUS                        PORTS
+pe-hackathon-alertmanager-1   prom/alertmanager:latest   "/bin/alertmanager -…"   alertmanager   9 minutes ago   Up 7 minutes                  0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp
+pe-hackathon-app1-1           pe-hackathon-app1          "uv run gunicorn --b…"   app1           9 minutes ago   Up About a minute (healthy)   5000/tcp
+pe-hackathon-app2-1           pe-hackathon-app2          "uv run gunicorn --b…"   app2           9 minutes ago   Up 2 minutes (healthy)        5000/tcp
+pe-hackathon-app3-1           pe-hackathon-app3          "uv run gunicorn --b…"   app3           9 minutes ago   Up About a minute (healthy)   5000/tcp
+pe-hackathon-app4-1           pe-hackathon-app4          "uv run gunicorn --b…"   app4           9 minutes ago   Up About a minute (healthy)   5000/tcp
+pe-hackathon-app5-1           pe-hackathon-app5          "uv run gunicorn --b…"   app5           9 minutes ago   Up 9 minutes (healthy)        5000/tcp
+pe-hackathon-db-1             postgres:16-alpine         "docker-entrypoint.s…"   db             9 minutes ago   Up 26 seconds (healthy)       0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+pe-hackathon-grafana-1        grafana/grafana:latest     "/run.sh"                grafana        9 minutes ago   Up 9 minutes                  0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+pe-hackathon-nginx-1          nginx:alpine               "/docker-entrypoint.…"   nginx          9 minutes ago   Up 9 minutes                  0.0.0.0:80->80/tcp, [::]:80->80/tcp
+pe-hackathon-prometheus-1     prom/prometheus:latest     "/bin/prometheus --c…"   prometheus     3 minutes ago   Up 3 minutes                  0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+pe-hackathon-redis-1          redis:7-alpine             "docker-entrypoint.s…"   redis          9 minutes ago   Up About a minute (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+
+--- Full health check ---
+{
+  "database": "connected",
+  "status": "ok"
+}
+

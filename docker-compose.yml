@@ -93,44 +93,6 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Flask App Instance 4
-  app4:
-    build: .
-    environment:
-      DATABASE_NAME: hackathon_db
-      DATABASE_HOST: db
-      DATABASE_PORT: "5432"
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: postgres
-      REDIS_URL: redis://redis:6379/0
-      LOG_LEVEL: INFO
-      INSTANCE_ID: app4
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # Flask App Instance 5
-  app5:
-    build: .
-    environment:
-      DATABASE_NAME: hackathon_db
-      DATABASE_HOST: db
-      DATABASE_PORT: "5432"
-      DATABASE_USER: postgres
-      DATABASE_PASSWORD: postgres
-      REDIS_URL: redis://redis:6379/0
-      LOG_LEVEL: INFO
-      INSTANCE_ID: app5
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
-
   # Nginx Load Balancer
   nginx:
     image: nginx:alpine
@@ -142,8 +104,6 @@ services:
       - app1
       - app2
       - app3
-      - app4
-      - app5
     restart: unless-stopped
 
   # Prometheus Metrics

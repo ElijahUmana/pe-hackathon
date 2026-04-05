@@ -1,0 +1,35 @@
+=== CHAOS EXPERIMENT 3: Kill Multiple Flask Instances ===
+Timestamp: 2026-04-05T02:48:18Z
+
+--- Action: Killing app1, app3, app4 simultaneously ---
+ Container pe-hackathon-app4-1 Killing 
+ Container pe-hackathon-app1-1 Killing 
+ Container pe-hackathon-app3-1 Killing 
+ Container pe-hackathon-app3-1 Killed 
+ Container pe-hackathon-app1-1 Killed 
+ Container pe-hackathon-app4-1 Killed 
+
+--- Health checks with 3/5 instances down ---
+Request 1: HTTP 200 in 0.003460s
+Request 2: HTTP 200 in 0.002744s
+Request 3: HTTP 200 in 0.003335s
+Request 4: HTTP 200 in 0.001782s
+Request 5: HTTP 200 in 0.002203s
+Request 6: HTTP 200 in 0.001925s
+Request 7: HTTP 200 in 0.003275s
+Request 8: HTTP 200 in 0.003212s
+Request 9: HTTP 200 in 0.002291s
+Request 10: HTTP 200 in 0.003005s
+
+--- Container status ---
+NAME                          STATUS
+pe-hackathon-alertmanager-1   Up 6 minutes
+pe-hackathon-app2-1           Up About a minute (healthy)
+pe-hackathon-app5-1           Up 8 minutes (healthy)
+pe-hackathon-db-1             Up 8 minutes (healthy)
+pe-hackathon-grafana-1        Up 8 minutes
+pe-hackathon-nginx-1          Up 8 minutes
+pe-hackathon-prometheus-1     Up 2 minutes
+pe-hackathon-redis-1          Up 28 seconds (healthy)
+
+RESULT: Service stayed fully available with only 2/5 Flask instances. Nginx load balancer handled failover seamlessly.

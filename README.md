@@ -1,5 +1,11 @@
 # Snip -- URL Shortener
 
+![CI](https://github.com/elijahumana/pe-hackathon/actions/workflows/ci.yml/badge.svg)
+![Python 3.13](https://img.shields.io/badge/python-3.13-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Docker](https://img.shields.io/badge/docker-9%20containers-blue)
+![Coverage](https://img.shields.io/badge/coverage-%E2%89%A570%25-brightgreen)
+
 A production-grade URL shortener built for the MLH Production Engineering Hackathon. The system handles URL creation, redirection with analytics tracking, and user management -- deployed behind a load-balanced, horizontally scaled architecture with full observability.
 
 ## Architecture
@@ -62,52 +68,115 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 | CI | GitHub Actions | Lint (ruff), test (pytest), coverage |
 | Language | Python 3.13 | |
 
+## Performance
+
+Tested on a DigitalOcean s-2vcpu-4gb droplet (2 vCPUs, 4GB RAM) with 3 Flask instances behind Nginx.
+
+| Tier | Concurrent Users | p95 Latency | Error Rate | Status |
+|------|-----------------|-------------|------------|--------|
+| Bronze | 50 | 707ms | 0.00% | **PASS** |
+| Silver | 200 | 3,620ms | 0.00% | **PASS** |
+| Gold | 500-600 | 20,390ms | 4.81% | **PASS** |
+
+**Key metrics:**
+- Redirect latency (cache hit): **5-15ms** p50
+- Cache hit ratio under load: **85%**
+- Throughput: **56 req/s** sustained at 500+ concurrent users
+- Auto-recovery from container crashes: **5-15 seconds**
+- Cost: **$24/month** ($0.17 per million requests)
+
+See [docs/bottleneck-report.md](docs/bottleneck-report.md) for the full analysis.
+
+## Monitoring
+
+The system ships with a pre-built Grafana dashboard that visualizes all production metrics in real time.
+
+**Dashboard panels:**
+- Request Rate (by HTTP status code) -- see traffic volume and error spikes
+- Error Rate (4xx and 5xx) -- percentage of failing requests
+- Request Latency (p50, p95, p99) -- response time distribution
+- Cache Hit Ratio -- Redis effectiveness (target: >80%)
+- Active URLs, URLs Created rate, Redirects rate -- business metrics
+- Instance Health -- UP/DOWN status per Flask instance
+
+**Access:** `http://<host>:3000` (credentials: `admin` / `hackathon2026`)
+
+**Alerting:** Alertmanager sends Discord notifications for:
+- ServiceDown (instance unreachable >1 min) -- Critical
+- HighErrorRate (>10% 5xx for >2 min) -- Warning
+- HighLatency (p95 >2s for >3 min) -- Warning
+- HighMemoryUsage (>512MB for >5 min) -- Warning
+
+See [docs/runbook.md](docs/runbook.md) for alert response procedures.
+
 ## Quick Start
 
 ### Local Development
 
 ```bash
-# Install dependencies
+# 1. Install dependencies (requires uv: https://docs.astral.sh/uv/)
 uv sync
 
-# Set up environment
+# 2. Set up environment
 cp .env.example .env
 
-# Start PostgreSQL and Redis (if not running)
+# 3. Start PostgreSQL and Redis
 docker compose up db redis -d
 
-# Create the database
-createdb hackathon_db
+# 4. Wait for database to be ready
+docker compose exec db pg_isready -U postgres
+# Should print: accepting connections
 
-# Seed the database
+# 5. Seed the database
 uv run python -m app.seed
+# Should print: Loaded 400 users, 2000 URLs, 3422 events
 
-# Run the development server
+# 6. Run the development server
 uv run run.py
 # Server at http://localhost:5000
 
-# Verify
+# 7. Verify it works
 curl http://localhost:5000/health
+# Expected: {"database":"connected","status":"ok"}
+
+# 8. Try a redirect
+SHORT_CODE=$(curl -s http://localhost:5000/urls?per_page=1 | python3 -c "import sys,json; print(json.load(sys.stdin)[0]['short_code'])")
+curl -v http://localhost:5000/$SHORT_CODE
+# Expected: 302 redirect with Location header
 ```
 
 ### Full Stack (Docker Compose)
 
 ```bash
-# Start everything (9 containers)
+# 1. Start everything (9 containers, takes ~30s on first build)
 docker compose up --build -d
 
-# Seed the database
+# 2. Wait for all containers to be healthy
+docker compose ps
+# All should show "Up" status
+
+# 3. Seed the database
 docker compose exec app1 uv run python -m app.seed
+# Should print: Loaded 400 users, 2000 URLs, 3422 events
 
-# Verify
+# 4. Verify the application
 curl http://localhost/health
+# Expected: {"database":"connected","status":"ok"}
 
-# Access services
+# 5. Verify load balancing (run multiple times, watch Nginx route to different instances)
+for i in $(seq 1 5); do curl -s http://localhost/health; echo; done
+
+# 6. Access services
 # App:          http://localhost        (Nginx -> Flask x3)
 # Grafana:      http://localhost:3000   (admin / hackathon2026)
 # Prometheus:   http://localhost:9090
 # Alertmanager: http://localhost:9093
 ```
+
+**Troubleshooting first start:**
+- If `docker compose ps` shows a container restarting, check its logs: `docker compose logs <service>`
+- If the database is not ready, wait 10 seconds and retry the seed command
+- If port 80 is in use, see [docs/troubleshooting.md](docs/troubleshooting.md#port-conflicts)
 
 ### Run Load Tests
 
@@ -157,16 +226,17 @@ See [docs/api.md](docs/api.md) for full request/response documentation.
 
 | Document | Description |
 |---|---|
-| [docs/api.md](docs/api.md) | Full API reference with examples |
-| [docs/architecture.md](docs/architecture.md) | System design, data flow, schema |
-| [docs/deployment.md](docs/deployment.md) | DigitalOcean deployment guide |
-| [docs/environment-variables.md](docs/environment-variables.md) | Every env var documented |
-| [docs/runbook.md](docs/runbook.md) | Alert response procedures |
-| [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and fixes |
-| [docs/decision-log.md](docs/decision-log.md) | Technical decision rationale |
-| [docs/capacity-plan.md](docs/capacity-plan.md) | Capacity planning and limits |
-| [docs/failure-modes.md](docs/failure-modes.md) | Failure mode analysis |
-| [docs/chaos-engineering.md](docs/chaos-engineering.md) | Chaos experiment playbook |
+| [docs/api.md](docs/api.md) | Full API reference with request/response examples for every endpoint |
+| [docs/architecture.md](docs/architecture.md) | System design, data flow diagrams, schema, security, performance architecture |
+| [docs/deployment.md](docs/deployment.md) | DigitalOcean deployment guide with zero-downtime strategy and smoke tests |
+| [docs/environment-variables.md](docs/environment-variables.md) | Every environment variable documented with defaults and examples |
+| [docs/runbook.md](docs/runbook.md) | Alert response procedures, recovery checklists, PromQL queries, post-incident template |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | Common issues and fixes with diagnostic commands |
+| [docs/decision-log.md](docs/decision-log.md) | Technical decision rationale for every major technology choice |
+| [docs/capacity-plan.md](docs/capacity-plan.md) | Capacity planning, SLA definition, cost analysis, scaling projections |
+| [docs/failure-modes.md](docs/failure-modes.md) | Failure mode analysis for every component with cascading scenarios |
+| [docs/chaos-engineering.md](docs/chaos-engineering.md) | Chaos experiment playbook with methodology, tools, and continuous chaos strategy |
+| [docs/bottleneck-report.md](docs/bottleneck-report.md) | Load test results, per-endpoint latency, cache analysis, resource utilization |
 
 ## Seed Data
 

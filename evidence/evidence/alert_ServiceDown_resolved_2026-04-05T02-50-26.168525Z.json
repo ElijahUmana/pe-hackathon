@@ -1,0 +1,23 @@
+{
+  "received_at": "2026-04-05T02:50:26.168525Z",
+  "alert_name": "ServiceDown",
+  "severity": "critical",
+  "status": "resolved",
+  "full_alert": {
+    "status": "resolved",
+    "labels": {
+      "alertname": "ServiceDown",
+      "instance": "app5:5000",
+      "job": "flask-app",
+      "severity": "critical"
+    },
+    "annotations": {
+      "description": "app5:5000 has been unreachable for more than 15 seconds.",
+      "summary": "Flask instance app5:5000 is down"
+    },
+    "startsAt": "2026-04-05T02:49:21.16Z",
+    "endsAt": "2026-04-05T02:49:36.16Z",
+    "generatorURL": "http://90b600a73cbe:9090/graph?g0.expr=up%7Bjob%3D%22flask-app%22%7D+%3D%3D+0&g0.tab=1",
+    "fingerprint": "fc851efce2cb4223"
+  }
+}

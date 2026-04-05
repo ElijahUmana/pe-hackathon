@@ -1,0 +1,59 @@
+=== CHAOS EXPERIMENT 1: Kill Flask Instance ===
+Timestamp: 2026-04-05T02:42:52Z
+
+--- Pre-state: All containers ---
+NAME                          IMAGE                      COMMAND                  SERVICE        CREATED         STATUS                   PORTS
+pe-hackathon-alertmanager-1   prom/alertmanager:latest   "/bin/alertmanager -…"   alertmanager   3 minutes ago   Up 54 seconds            0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp
+pe-hackathon-app1-1           pe-hackathon-app1          "uv run gunicorn --b…"   app1           3 minutes ago   Up 2 minutes (healthy)   5000/tcp
+pe-hackathon-app2-1           pe-hackathon-app2          "uv run gunicorn --b…"   app2           3 minutes ago   Up 2 minutes (healthy)   5000/tcp
+pe-hackathon-app3-1           pe-hackathon-app3          "uv run gunicorn --b…"   app3           3 minutes ago   Up 2 minutes (healthy)   5000/tcp
+pe-hackathon-app4-1           pe-hackathon-app4          "uv run gunicorn --b…"   app4           3 minutes ago   Up 2 minutes (healthy)   5000/tcp
+pe-hackathon-app5-1           pe-hackathon-app5          "uv run gunicorn --b…"   app5           3 minutes ago   Up 2 minutes (healthy)   5000/tcp
+pe-hackathon-db-1             postgres:16-alpine         "docker-entrypoint.s…"   db             3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+pe-hackathon-grafana-1        grafana/grafana:latest     "/run.sh"                grafana        3 minutes ago   Up 3 minutes             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+pe-hackathon-nginx-1          nginx:alpine               "/docker-entrypoint.…"   nginx          3 minutes ago   Up 2 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp
+pe-hackathon-prometheus-1     prom/prometheus:latest     "/bin/prometheus --c…"   prometheus     3 minutes ago   Up 53 seconds            0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+pe-hackathon-redis-1          redis:7-alpine             "docker-entrypoint.s…"   redis          3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+
+--- Action: Killing app2 ---
+ Container pe-hackathon-app2-1 Killing 
+ Container pe-hackathon-app2-1 Killed 
+
+--- Post-kill: Container status ---
+NAME                          IMAGE                      COMMAND                  SERVICE        CREATED         STATUS                   PORTS
+pe-hackathon-alertmanager-1   prom/alertmanager:latest   "/bin/alertmanager -…"   alertmanager   3 minutes ago   Up 56 seconds            0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp
+pe-hackathon-app1-1           pe-hackathon-app1          "uv run gunicorn --b…"   app1           3 minutes ago   Up 3 minutes (healthy)   5000/tcp
+pe-hackathon-app3-1           pe-hackathon-app3          "uv run gunicorn --b…"   app3           3 minutes ago   Up 3 minutes (healthy)   5000/tcp
+pe-hackathon-app4-1           pe-hackathon-app4          "uv run gunicorn --b…"   app4           3 minutes ago   Up 3 minutes (healthy)   5000/tcp
+pe-hackathon-app5-1           pe-hackathon-app5          "uv run gunicorn --b…"   app5           3 minutes ago   Up 3 minutes (healthy)   5000/tcp
+pe-hackathon-db-1             postgres:16-alpine         "docker-entrypoint.s…"   db             3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+pe-hackathon-grafana-1        grafana/grafana:latest     "/run.sh"                grafana        3 minutes ago   Up 3 minutes             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+pe-hackathon-nginx-1          nginx:alpine               "/docker-entrypoint.…"   nginx          3 minutes ago   Up 3 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp
+pe-hackathon-prometheus-1     prom/prometheus:latest     "/bin/prometheus --c…"   prometheus     3 minutes ago   Up 56 seconds            0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+pe-hackathon-redis-1          redis:7-alpine             "docker-entrypoint.s…"   redis          3 minutes ago   Up 3 minutes (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+
+--- Health check while app2 is down ---
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+--- Service still functional (nginx routes to remaining instances) ---
+Request 1: HTTP 200 in 0.003153s
+Request 2: HTTP 200 in 0.004168s
+Request 3: HTTP 200 in 0.002936s
+Request 4: HTTP 200 in 0.004874s
+Request 5: HTTP 200 in 0.003890s
+
+--- Alert fired successfully ---
+Alert received at webhook at: 2026-04-05T02:44:11.185348Z
+Alert name: ServiceDown, instance: app2:5000, severity: critical
+
+--- Waiting for auto-restart (restart: unless-stopped) ---
+ Container pe-hackathon-redis-1 Waiting 
+ Container pe-hackathon-db-1 Waiting 
+ Container pe-hackathon-redis-1 Healthy 
+ Container pe-hackathon-db-1 Healthy 
+ Container pe-hackathon-app2-1 Starting 
+ Container pe-hackathon-app2-1 Started 
+app2 manually restarted

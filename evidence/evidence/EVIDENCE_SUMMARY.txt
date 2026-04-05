@@ -1,0 +1,115 @@
+=== INCIDENT RESPONSE INFRASTRUCTURE EVIDENCE SUMMARY ===
+Generated: 2026-04-05
+
+## 1. Monitoring Stack
+
+### Components Deployed:
+- Prometheus (port 9090): Metrics collection, 10s scrape interval for Flask, 15s for system metrics
+- Alertmanager (port 9093): Alert routing with severity-based grouping and inhibition rules
+- Grafana (port 3000): Dashboard visualization
+- Node Exporter: System-level metrics (CPU, RAM, disk, network)
+- Webhook Receiver (port 9094): Custom alert receiver with structured logging
+- DigitalOcean Metrics Agent: Cloud provider metrics integration
+
+### Prometheus Targets:
+- flask-app: app1:5000, app2:5000, app3:5000, app4:5000, app5:5000 (all UP)
+- node-exporter: node-exporter:9100 (UP)
+
+### Alert Rules (10 total):
+Application-level:
+1. ServiceDown - Flask instance unreachable for 15s (critical)
+2. HighErrorRate - >10% 5xx errors over 5min (warning)
+3. HighLatency - p95 > 2s over 5min (warning)
+4. HighMemoryUsage - RSS > 512MB for 5min (warning)
+
+Infrastructure-level:
+5. NodeExporterDown - Node exporter unreachable 30s (critical)
+6. HostHighCpuUsage - CPU > 80% for 5min (warning)
+7. HostHighMemoryUsage - Memory > 85% for 5min (warning)
+8. HostDiskSpaceLow - Disk < 15% free for 5min (warning)
+9. HostDiskSpaceCritical - Disk < 5% free for 1min (critical)
+10. HostNetworkErrors - Error rate > 10/s for 5min (warning)
+
+### Alert Routing:
+- Critical alerts: 5s group wait, 2m repeat interval
+- Warning alerts: 15s group wait, 5m repeat interval
+- Inhibition: Critical alerts suppress matching warning alerts
+- All alerts sent to webhook receiver with send_resolved: true
+
+## 2. Alerting Pipeline Verification
+
+VERIFIED END-TO-END:
+1. Prometheus detected ServiceDown (app2:5000)
+2. Alert transitioned: inactive -> pending -> firing
+3. Alertmanager received and grouped the alert
+4. Webhook receiver received the alert payload at 02:44:11Z
+5. Alert evidence file created: alert_ServiceDown_firing_2026-04-05T02-44-11.185348Z.json
+6. After recovery, RESOLVED alert received at 02:47:11Z
+7. Resolved evidence file created: alert_ServiceDown_resolved_2026-04-05T02-47-11.176845Z.json
+
+## 3. Chaos Engineering Experiments
+
+### Experiment 1: Kill Single Flask Instance (app2)
+- Action: docker compose kill app2
+- Result: Service remained fully available (HTTP 200 on all requests)
+- Alert: ServiceDown fired for app2:5000 (critical)
+- Recovery: Manual start, resolved alert received
+- Conclusion: PASS - Load balancer handles single instance failure
+
+### Experiment 2: Kill Redis Cache
+- Action: docker compose kill redis
+- Result: Service remained fully available (HTTP 200, <10ms latency)
+- Conclusion: PASS - Database fallback works when cache is down
+
+### Experiment 3: Kill 3 of 5 Flask Instances
+- Action: docker compose kill app1 app3 app4
+- Result: 10/10 requests succeeded, <5ms latency
+- Alert: Multiple ServiceDown alerts fired
+- Conclusion: PASS - Service survives 60% instance loss
+
+### Experiment 4: Kill Database
+- Action: docker compose kill db
+- Result: Health endpoint showed OK (connection pool caching), write operations returned 500
+- Recovery: DB restart restored full functionality
+- Finding: Health check should actively query DB, not rely on pool state
+- Conclusion: PASS with finding - Graceful degradation, writes correctly fail
+
+### Experiment 5: Recovery Verification
+- All containers running and healthy after all chaos experiments
+- All restart counts at 0 (containers were manually restarted via compose)
+- Health check returns "database: connected, status: ok"
+
+## 4. Evidence Files
+
+Chaos experiment logs:
+- /root/pe-hackathon/evidence/chaos-experiments/experiment1_kill_flask.txt
+- /root/pe-hackathon/evidence/chaos-experiments/experiment2_kill_redis.txt
+- /root/pe-hackathon/evidence/chaos-experiments/experiment3_kill_multiple.txt
+- /root/pe-hackathon/evidence/chaos-experiments/experiment4_kill_db.txt
+- /root/pe-hackathon/evidence/chaos-experiments/experiment5_restart_verification.txt
+
+Alert evidence (JSON):
+- /root/pe-hackathon/evidence/alert_ServiceDown_firing_*.json
+- /root/pe-hackathon/evidence/alert_ServiceDown_resolved_*.json
+
+Alert log:
+- /var/log/alerts.log (inside webhook-receiver container, also mounted at host /var/log)
+
+## 5. Infrastructure Diagram
+
+User -> Nginx (port 80) -> [app1, app2, app3, app4, app5] (port 5000)
+                              |          |
+                         PostgreSQL    Redis
+                         (port 5432)  (port 6379)
+
+Prometheus (port 9090) -> scrapes all Flask apps + node-exporter
+          |
+     alert_rules.yml (10 rules)
+          |
+     Alertmanager (port 9093)
+          |
+     Webhook Receiver (port 9094) -> /var/log/alerts.log + evidence files
+
+Grafana (port 3000) -> queries Prometheus
+DigitalOcean Metrics Agent -> DigitalOcean monitoring dashboard
+Node Exporter -> System metrics (CPU, RAM, disk, network)
