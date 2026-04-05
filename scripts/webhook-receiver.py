@@ -9,8 +9,8 @@ import json
 import os
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-ALERT_LOG = "/var/log/alerts.log"
-EVIDENCE_DIR = "/root/pe-hackathon/evidence"
+ALERT_LOG = os.environ.get("ALERT_LOG", "/var/log/alerts.log")
+EVIDENCE_DIR = os.environ.get("EVIDENCE_DIR", "/app/evidence")
 
 os.makedirs(EVIDENCE_DIR, exist_ok=True)
 

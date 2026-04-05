@@ -148,6 +148,32 @@ services:
       - "--config.file=/etc/alertmanager/alertmanager.yml"
     restart: unless-stopped
 
+  # Node Exporter for system metrics (CPU, RAM, disk, network)
+  node-exporter:
+    image: prom/node-exporter:latest
+    pid: host
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - "--path.procfs=/host/proc"
+      - "--path.sysfs=/host/sys"
+      - "--path.rootfs=/rootfs"
+      - "--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)"
+    restart: unless-stopped
+
+  # Webhook receiver for alert notifications
+  webhook-receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile.webhook
+    ports:
+      - "9094:9094"
+    volumes:
+      - ./evidence:/app/evidence
+    restart: unless-stopped
+
 volumes:
   postgres_data:
   prometheus_data:

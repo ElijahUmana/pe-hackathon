@@ -377,6 +377,22 @@ docker compose restart grafana
 
 ---
 
+## Error Handling Behavior
+
+All error responses are returned as JSON. No endpoint ever returns HTML error pages or Python stack traces.
+
+- **404 Not Found**: Returned as `{"error": "Not found"}` when a resource does not exist (e.g., unknown short code, unknown URL ID).
+- **500 Internal Server Error**: Returned as `{"error": "Internal server error"}` for unhandled exceptions. The response body never includes a stack trace.
+- **405 Method Not Allowed**: Returned as `{"error": "Method not allowed"}` when an HTTP method is not supported on an endpoint.
+- **400 Bad Request**: Returned as a JSON object with a specific error message describing the validation failure. Examples:
+  - `{"error": "Content-Type must be application/json"}` when the request body is not JSON.
+  - `{"error": "url is required"}` when the required `url` field is missing or empty.
+  - `{"error": "A valid HTTP or HTTPS URL is required"}` when the URL fails format validation.
+  - `{"error": "user_id must be an integer"}` when the `user_id` field is not a valid integer.
+  - `{"error": "is_active must be a boolean"}` when the `is_active` field is not a boolean.
+
+---
+
 ## CI Pipeline Failures
 
 ### Symptom: GitHub Actions lint step fails

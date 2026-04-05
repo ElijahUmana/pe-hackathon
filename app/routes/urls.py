@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, redirect, request
 from peewee import IntegrityError
 from playhouse.shortcuts import model_to_dict
 
+from app.metrics import CACHE_HITS, CACHE_MISSES, REDIRECTS_TOTAL, URLS_CREATED
 from app.models.event import Event
 from app.models.url import URL
 from app.models.user import User
@@ -115,6 +116,8 @@ def create_url():
             "original_url": url_obj.original_url,
         }),
     )
+
+    URLS_CREATED.inc()
 
     logger.info(
         "URL created",
@@ -251,6 +254,8 @@ def redirect_short_url(short_code):
 
     if cached:
         # Cache hit
+        CACHE_HITS.inc()
+        REDIRECTS_TOTAL.inc()
         cache_data = json.loads(cached)
         original_url = cache_data["original_url"]
         url_id = cache_data["url_id"]
@@ -274,6 +279,7 @@ def redirect_short_url(short_code):
 
     # DB lookup — only active URLs (Hint 4: Slumbering Guide)
     # Use .dicts() and select only needed columns to skip model instantiation
+    CACHE_MISSES.inc()
     row = (
         URL.select(URL.original_url, URL.id, URL.user_id)
         .where((URL.short_code == short_code) & (URL.is_active == True))  # noqa: E712
@@ -302,6 +308,8 @@ def redirect_short_url(short_code):
             )
         except Exception:
             pass
+
+    REDIRECTS_TOTAL.inc()
 
     # Log redirect event BEFORE returning (Hint 2: Unseen Observer)
     Event.create(
