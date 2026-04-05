@@ -3,7 +3,7 @@ import json
 import logging
 
 from flask import Blueprint, jsonify, redirect, request
-from peewee import IntegrityError, fn
+from peewee import IntegrityError
 from playhouse.shortcuts import model_to_dict
 
 from app.models.event import Event

@@ -22,7 +22,7 @@ def create_app(testing=False):
     init_db(app)
 
     # Import models to register them with Peewee
-    from app.models import User, URL, Event  # noqa: F401
+    from app.models import URL, Event, User  # noqa: F401
 
     # Create tables if they don't exist
     with app.app_context():

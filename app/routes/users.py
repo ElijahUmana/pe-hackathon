@@ -1,5 +1,4 @@
 import datetime
-import json
 
 from flask import Blueprint, jsonify, request
 from peewee import IntegrityError

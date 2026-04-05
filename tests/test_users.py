@@ -1,6 +1,5 @@
 """Tests for the /users CRUD endpoints."""
 
-import json
 
 
 # ---------------------------------------------------------------------------
@@ -29,7 +28,9 @@ def test_list_users_returns_created_users(client):
 # ---------------------------------------------------------------------------
 
 def test_get_user_by_id(client):
-    create_resp = client.post("/users", json={"username": "charlie", "email": "charlie@example.com"})
+    create_resp = client.post(
+        "/users", json={"username": "charlie", "email": "charlie@example.com"}
+    )
     user_id = create_resp.get_json()["id"]
     resp = client.get(f"/users/{user_id}")
     assert resp.status_code == 200

@@ -14,9 +14,9 @@ MODELS = []
 
 def _get_models():
     if not MODELS:
-        from app.models.user import User
-        from app.models.url import URL
         from app.models.event import Event
+        from app.models.url import URL
+        from app.models.user import User
 
         MODELS.extend([User, URL, Event])
     return MODELS
