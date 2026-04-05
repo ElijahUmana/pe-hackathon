@@ -25,6 +25,9 @@ dev = [
 testpaths = ["tests"]
 addopts = "-v --tb=short"
 
+[tool.coverage.run]
+omit = ["app/seed.py"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py313"

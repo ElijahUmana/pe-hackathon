@@ -4,13 +4,13 @@
 
 | Resource | Specification |
 |---|---|
-| Droplet | DigitalOcean s-1vcpu-1gb |
-| vCPUs | 1 |
-| RAM | 1 GB |
+| Droplet | DigitalOcean s-2vcpu-4gb |
+| vCPUs | 2 |
+| RAM | 4 GB |
 | Swap | 2 GB (manually configured) |
-| Disk | 25 GB SSD |
-| Network | 1 TB transfer/month |
-| OS | Ubuntu + Docker |
+| Disk | 80 GB SSD |
+| Network | 4 TB transfer/month |
+| OS | CentOS 9 Stream x64 + Docker |
 
 ## Container Resource Footprint
 
