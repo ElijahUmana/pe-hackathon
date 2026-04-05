@@ -39,6 +39,11 @@ def list_urls():
     if user_id_filter is not None:
         query = query.where(URL.user_id == user_id_filter)
 
+    is_active_filter = request.args.get("is_active")
+    if is_active_filter is not None:
+        active = is_active_filter.lower() in ("true", "1", "yes")
+        query = query.where(URL.is_active == active)
+
     urls = query.paginate(page, per_page)
     return jsonify([model_to_dict(u, backrefs=False, recurse=False) for u in urls])
 
