@@ -188,7 +188,7 @@ With 1 vCPU shared across 11 containers and 12 Gunicorn request handlers (3 inst
 
 **Saturation point:** At 200+ concurrent users, total CPU demand exceeds 100%. The kernel time-slices between processes, adding context switching latency.
 
-**Observed behavior:** Throughput reaches ~107 req/s at Gold tier, with CPU as the limiting factor.
+**Observed behavior:** Throughput reaches ~158 req/s at Gold tier, with CPU as the limiting factor.
 
 **Mitigation:** Vertical scaling (larger droplet) provides the most direct improvement. A 2-vCPU droplet would approximately double throughput.
 

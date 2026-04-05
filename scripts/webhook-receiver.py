@@ -84,9 +84,11 @@ def forward_to_discord(data):
                 ],
                 capture_output=True, text=True, timeout=10,
             )
-            print("Discord response: HTTP %s" % result.stdout.strip())
+            print("Discord response for %s: HTTP %s" % (name, result.stdout.strip()), flush=True)
+            if result.stderr:
+                print("Discord curl stderr: %s" % result.stderr.strip(), flush=True)
     except Exception as e:
-        print("Discord forward failed: %s" % e)
+        print("Discord forward failed: %s" % e, flush=True)
 
 
 class AlertHandler(BaseHTTPRequestHandler):
@@ -124,10 +126,10 @@ class AlertHandler(BaseHTTPRequestHandler):
                     }, f, indent=2)
                 instance = alert.get("labels", {}).get("instance", "unknown")
                 msg = "[%s] ALERT %s: %s (severity=%s) on %s"
-                print(msg % (timestamp, status.upper(), alert_name, severity, instance))
+                print(msg % (timestamp, status.upper(), alert_name, severity, instance), flush=True)
 
         alert_count = len(data.get("alerts", [])) if isinstance(data, dict) else 0
-        print("[%s] Logged %d alert(s) to %s" % (timestamp, alert_count, ALERT_LOG))
+        print("[%s] Logged %d alert(s) to %s" % (timestamp, alert_count, ALERT_LOG), flush=True)
 
         forward_to_discord(data)
 
@@ -157,12 +159,13 @@ class AlertHandler(BaseHTTPRequestHandler):
 
     def log_message(self, format, *args):
         timestamp = datetime.datetime.utcnow().isoformat() + "Z"
-        print("[%s] %s" % (timestamp, format % args))
+        print("[%s] %s" % (timestamp, format % args), flush=True)
 
 if __name__ == "__main__":
     port = 9094
     server = HTTPServer(("0.0.0.0", port), AlertHandler)
-    print("Webhook receiver listening on port %d" % port)
-    print("Alert log: %s" % ALERT_LOG)
-    print("Evidence dir: %s" % EVIDENCE_DIR)
+    print("Webhook receiver listening on port %d" % port, flush=True)
+    print("Alert log: %s" % ALERT_LOG, flush=True)
+    print("Evidence dir: %s" % EVIDENCE_DIR, flush=True)
+    print("Discord webhook URL configured: %s" % bool(DISCORD_WEBHOOK_URL), flush=True)
     server.serve_forever()

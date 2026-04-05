@@ -212,7 +212,7 @@ curl -s -D - -o /dev/null http://localhost/$SHORT_CODE 2>&1 | grep X-Cache
 
 ### Hypothesis
 
-Killing PostgreSQL will cause the health endpoint to report `"status": "degraded"`. All database-dependent operations will return 500 errors. Cached redirects will continue working for up to 300 seconds (TTL). After Docker restarts PostgreSQL, the application will automatically reconnect.
+Killing PostgreSQL will cause the health endpoint to report `"status": "degraded"`. All database-dependent operations will return 500 errors. Cached redirects will continue working for up to 600 seconds (TTL). After Docker restarts PostgreSQL, the application will automatically reconnect.
 
 ### Method
 
@@ -326,8 +326,8 @@ docker compose ps
 - k6 threshold `http_req_duration p(95) < 5000` passes.
 - k6 threshold `errors rate < 0.05` passes.
 - CPU usage hits 80-100% during the 500 VU hold phase.
-- Memory stays within bounds (4GB + 2GB swap).
-- Cache hit ratio exceeds 80% during sustained load (same URLs accessed repeatedly).
+- Memory stays within bounds (1 GB RAM + 2 GB swap).
+- Cache hit ratio exceeds 90% during sustained load (all URLs pre-warmed on startup).
 - No containers crash or restart.
 - Latency increases during the 600 VU push phase but returns to normal during cool-down.
 

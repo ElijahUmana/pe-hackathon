@@ -78,7 +78,7 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 ## Key Features
 
 - **Connection Pooling:** PooledPostgresqlDatabase with 20-connection pool eliminates per-request connect/disconnect overhead
-- **Cache Warm-Up:** Top 100 active URLs pre-loaded into Redis on startup for instant cache hits
+- **Cache Warm-Up:** All active URLs pre-loaded into Redis on startup via pipelined writes for instant cache hits (95%+ hit ratio)
 - **Composite Indexes:** `(short_code, is_active)` index optimizes the redirect hot path
 - **Graceful Degradation:** Redis failure falls back to direct DB queries transparently
 - **Soft Delete:** URLs are deactivated, not removed -- preserves history and analytics

@@ -82,7 +82,7 @@ When Redis becomes unavailable:
 ### Estimated Recovery Time
 
 - Container restart: 1-3 seconds
-- Cache warm-up: Gradual over 300 seconds (one TTL cycle) as redirects repopulate the cache
+- Cache warm-up: Immediate on startup (all active URLs pre-warmed via pipelined writes, 600s TTL)
 
 ---
 
@@ -339,8 +339,8 @@ When the Webhook Receiver container crashes:
 
 1. PostgreSQL crashes (OOM, disk full, or killed).
 2. All Flask instances start returning 500 errors for database operations.
-3. Redis continues serving cached redirects for up to 300 seconds.
-4. After 300 seconds, cache entries expire and all redirects fail.
+3. Redis continues serving cached redirects for up to 600 seconds (10 minutes).
+4. After 600 seconds, cache entries expire and all redirects fail.
 5. HighErrorRate alert fires after 2 minutes.
 6. Docker restarts PostgreSQL (5-15 seconds).
 7. Flask instances reconnect automatically.

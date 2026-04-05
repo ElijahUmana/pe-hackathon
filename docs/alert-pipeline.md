@@ -7,7 +7,7 @@ This document describes the complete alerting pipeline for the URL Shortener pro
 ## 1. Pipeline Architecture
 
 ```
-                        10s scrape interval
+                        15s scrape interval
 Prometheus (port 9090) ─────────────────────> Flask app1:5000/metrics
          │                                    Flask app2:5000/metrics
          │                                    Flask app3:5000/metrics
@@ -62,7 +62,7 @@ alerting:
 
 scrape_configs:
   - job_name: "flask-app"
-    scrape_interval: 10s
+    scrape_interval: 15s
     static_configs:
       - targets:
           - "app1:5000"
@@ -84,7 +84,7 @@ scrape_configs:
 |---|---|---|
 | `global.scrape_interval` | 15s | Default interval for all jobs unless overridden |
 | `global.evaluation_interval` | 15s | How often Prometheus evaluates alert rules |
-| `flask-app.scrape_interval` | 10s | Overrides global; Flask apps scraped every 10 seconds for faster failure detection |
+| `flask-app.scrape_interval` | 15s | Matches global interval; Flask apps scraped every 15 seconds |
 | `node-exporter.scrape_interval` | 15s | System metrics collected at default interval |
 
 ### Scraped Metrics
@@ -571,11 +571,11 @@ Total Response Time = Scrape Interval + For Duration + Group Wait + Network Late
 
 | Component | Duration | Notes |
 |---|---|---|
-| Scrape interval | 0-10s | Worst case is the full scrape interval if the failure happens right after a scrape |
+| Scrape interval | 0-15s | Worst case is the full scrape interval if the failure happens right after a scrape |
 | For duration | 15s | Alert must remain true for 15 consecutive seconds |
 | Group wait (critical) | 5s | Alertmanager batching window |
 | Network (internal Docker) | <100ms | Container-to-container within same Docker network |
-| **Theoretical worst case** | **~30s** | |
+| **Theoretical worst case** | **~35s** | |
 | **Theoretical best case** | **~20s** | Failure happens just before a scrape |
 
 #### For HostHighCpuUsage (warning):
@@ -642,7 +642,7 @@ The following was verified end-to-end during the chaos engineering session on 20
 
 | Check | Result | Evidence |
 |---|---|---|
-| Prometheus scrapes Flask instances every 10s | Verified | `prometheus.yml` config; `up` metric changes within 10s of kill |
+| Prometheus scrapes Flask instances every 15s | Verified | `prometheus.yml` config; `up` metric changes within 15s of kill |
 | `up` metric set to 0 when instance is unreachable | Verified | Alert fired with `expr: up{job="flask-app"} == 0` |
 | ServiceDown alert fires after 15s `for` duration | Verified | `startsAt` is ~74s after kill (includes scrape alignment) |
 | Alertmanager receives alert from Prometheus | Verified | Alert appears in Alertmanager UI and is dispatched to webhook |

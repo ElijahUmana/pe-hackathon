@@ -25,7 +25,7 @@ graph TB
     end
 
     subgraph "Observability"
-        Prom[Prometheus<br/>Metrics Scraper<br/>10s interval]
+        Prom[Prometheus<br/>Metrics Scraper<br/>15s interval]
         Grafana[Grafana<br/>Dashboards]
         AM[Alertmanager<br/>Alert Routing]
         NE[Node Exporter<br/>Host Metrics]
@@ -104,7 +104,7 @@ Client                 Nginx              Flask              PostgreSQL         
   |                      |                  |<-- url_obj ---------|               |
   |                      |                  |                     |               |
   |                      |                  |-- SETEX url:aB3xYz ----------->|
-  |                      |                  |   TTL=300s, json data           |
+  |                      |                  |   TTL=600s, json data           |
   |                      |                  |                     |               |
   |                      |                  |-- INSERT event ---->|               |
   |                      |                  |   (type=redirect)   |               |
@@ -321,7 +321,7 @@ Redis is used as a read-through cache for the redirect hot path.
 }
 ```
 
-**TTL:** 300 seconds (5 minutes)
+**TTL:** 600 seconds (10 minutes)
 
 **Cache invalidation:** When a URL is updated (`PUT /urls/:id`) or soft-deleted (`DELETE /urls/:id`), the corresponding cache key is explicitly deleted.
 

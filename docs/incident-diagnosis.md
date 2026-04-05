@@ -40,7 +40,7 @@ At 02:44:06 UTC on April 5, 2026, Flask application instance `app2` became unrea
 - Alertmanager `group_wait` for critical: 5 seconds. After receiving the alert, Alertmanager waits 5 seconds to batch any additional alerts in the same group.
 - Webhook delivery: sub-second.
 
-**Worst-case detection time:** ~30 seconds from failure to webhook notification (10s scrape + 15s for + 5s group_wait).
+**Worst-case detection time:** ~35 seconds from failure to webhook notification (15s scrape + 15s for + 5s group_wait).
 **Observed detection time:** ~79 seconds from kill (02:42:52) to webhook receipt (02:44:11). This aligns with the scrape/evaluation cycle timing since the kill happened mid-cycle.
 
 ### 2.3 Where the Alert Appeared
