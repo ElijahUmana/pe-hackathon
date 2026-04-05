@@ -159,6 +159,23 @@ docker compose up -d webhook-receiver
 
 See [docs/runbook.md](docs/runbook.md) for alert response procedures and [docs/alert-pipeline.md](docs/alert-pipeline.md) for the complete pipeline architecture.
 
+## Evidence Screenshots
+
+Live production screenshots from the deployed system:
+
+| Screenshot | Description |
+|------------|-------------|
+| ![Grafana](evidence/screenshots/grafana-dashboard.png) | Grafana dashboard with all 8 panels showing live traffic data |
+| ![Discord](evidence/screenshots/discord-alerts.png) | Discord alerts: ServiceDown FIRING and RESOLVED notifications |
+| ![Prometheus](evidence/screenshots/prometheus-alert-rules.png) | 12 Prometheus alert rules (all healthy) |
+| ![Health](evidence/screenshots/health-endpoint.png) | /health endpoint returning database connectivity status |
+| ![Metrics](evidence/screenshots/metrics-endpoint.png) | /metrics endpoint with Prometheus-format metrics |
+| ![Docker](evidence/screenshots/docker-ps.png) | 11 containers running via Docker Compose |
+| ![Tests](evidence/screenshots/pytest-coverage.png) | 259 tests passing at 91% coverage |
+| ![Errors](evidence/screenshots/error-handling.png) | Clean JSON error responses for invalid inputs |
+| ![Chaos](evidence/screenshots/container-restart.png) | Container kill → auto-restart in 3 seconds |
+| ![CI](evidence/screenshots/github-actions-ci.png) | GitHub Actions CI pipeline with passing builds |
+
 ## Quick Start
 
 ### Local Development
