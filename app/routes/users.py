@@ -26,17 +26,17 @@ def bulk_create_users():
     reader = csv.DictReader(stream)
 
     count = 0
-    with db.atomic():
-        for row in reader:
-            try:
+    for row in reader:
+        try:
+            with db.atomic():
                 User.create(
                     username=row.get("username", "").strip(),
                     email=row.get("email", "").strip(),
                     created_at=row.get("created_at", datetime.datetime.utcnow()),
                 )
                 count += 1
-            except IntegrityError:
-                continue
+        except IntegrityError:
+            continue
 
     return jsonify({"imported": count, "count": count}), 201
 

@@ -14,9 +14,9 @@ graph TB
     end
 
     subgraph "Application Layer"
-        App1[Flask + Gunicorn<br/>Instance 1<br/>4 workers]
-        App2[Flask + Gunicorn<br/>Instance 2<br/>4 workers]
-        App3[Flask + Gunicorn<br/>Instance 3<br/>4 workers]
+        App1[Flask + Gunicorn<br/>Instance 1<br/>3w x 4t]
+        App2[Flask + Gunicorn<br/>Instance 2<br/>3w x 4t]
+        App3[Flask + Gunicorn<br/>Instance 3<br/>3w x 4t]
     end
 
     subgraph "Data Layer"
@@ -390,7 +390,7 @@ node-exporter                    |                         |
 **Scrape configuration:** Prometheus scrapes all 3 Flask instances every 10 seconds via their `/metrics` endpoint.
 
 **Alert rules:**
-- **ServiceDown:** Flask instance unreachable for 1 minute (critical)
+- **ServiceDown:** Flask instance unreachable for 15 seconds (critical)
 - **HighErrorRate:** >10% 5xx error rate over 5 minutes, sustained 2 minutes (warning)
 - **HighLatency:** p95 latency >2 seconds over 5 minutes, sustained 3 minutes (warning)
 - **HighMemoryUsage:** Process memory >512MB for 5 minutes (warning)

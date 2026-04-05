@@ -98,7 +98,7 @@ ORDER BY duration DESC;"
 
 **Check 3: Connection pool exhaustion**
 
-Each Gunicorn worker opens its own database connection. With 3 instances x 4 workers = 12 concurrent connections. PostgreSQL's default `max_connections` is 100, so this is fine. But if you scale up significantly:
+Each Gunicorn thread opens its own database connection. With 3 instances x 3 workers x 4 threads = 36 concurrent connections. PostgreSQL's `max_connections` is set to 200, so this is fine. But if you scale up significantly:
 
 ```bash
 docker compose exec db psql -U postgres -c "SHOW max_connections;"
@@ -194,20 +194,22 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
    command: redis-server --maxmemory 64mb --maxmemory-policy allkeys-lru
    ```
 
-**Memory budget for a 1GB droplet + 2GB swap:**
+**Memory budget for a 4GB droplet + 2GB swap:**
 
 | Component | Typical Memory |
 |---|---|
-| PostgreSQL | 100-200 MB |
-| Redis | 10-50 MB |
-| Flask+Gunicorn (per instance) | 80-150 MB |
-| Flask x3 total | 240-450 MB |
-| Prometheus | 50-100 MB |
-| Grafana | 50-100 MB |
-| Nginx | 5-15 MB |
-| Alertmanager | 10-20 MB |
+| PostgreSQL | 130-240 MB |
+| Redis | 12-22 MB |
+| Flask+Gunicorn (per instance) | 93-155 MB |
+| Flask x3 total | 282-460 MB |
+| Prometheus | 75-95 MB |
+| Grafana | 65-72 MB |
+| Nginx | 8-18 MB |
+| Alertmanager | 12 MB |
+| Node Exporter | 10-15 MB |
+| Webhook Receiver | 10-15 MB |
 | OS overhead | 100-150 MB |
-| **Total** | **~565-1085 MB** |
+| **Total** | **~584-919 MB** |
 
 ---
 

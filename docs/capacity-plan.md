@@ -88,12 +88,12 @@ Projected performance based on observed data, scaling linearly with CPU (primary
 
 | Droplet | vCPUs | RAM | Projected Max VU (p95 < 5s) | Projected Throughput | Monthly Cost |
 |---|---|---|---|---|---|
-| s-1vcpu-1gb | 1 | 1 GB | ~200 | ~28 req/s | $6 |
-| s-1vcpu-2gb | 1 | 2 GB | ~250 | ~30 req/s | $12 |
-| s-2vcpu-2gb | 2 | 2 GB | ~500 | ~55 req/s | $18 |
-| **s-2vcpu-4gb** (current) | **2** | **4 GB** | **~550** | **~56 req/s** | **$24** |
-| s-4vcpu-8gb | 4 | 8 GB | ~1,100 | ~110 req/s | $48 |
-| s-8vcpu-16gb | 8 | 16 GB | ~2,200 | ~220 req/s | $96 |
+| s-1vcpu-1gb | 1 | 1 GB | ~200 | ~116 req/s | $6 |
+| s-1vcpu-2gb | 1 | 2 GB | ~250 | ~120 req/s | $12 |
+| s-2vcpu-2gb | 2 | 2 GB | ~500 | ~220 req/s | $18 |
+| **s-2vcpu-4gb** (current) | **2** | **4 GB** | **~600** | **~232 req/s** | **$24** |
+| s-4vcpu-8gb | 4 | 8 GB | ~1,200 | ~460 req/s | $48 |
+| s-8vcpu-16gb | 8 | 16 GB | ~2,400 | ~920 req/s | $96 |
 
 ### Horizontal Scaling Projections
 
@@ -102,9 +102,9 @@ Adding Flask instances on the same droplet (limited by CPU):
 | Configuration | Instances | Handlers | Projected Max VU | Bottleneck |
 |---|---|---|---|---|
 | 2 instances x 3w x 4t | 2 | 24 | ~400 | CPU |
-| **3 instances x 3w x 4t** (current) | **3** | **36** | **~550** | **CPU** |
-| 4 instances x 3w x 4t | 4 | 48 | ~550 (no improvement) | CPU saturated |
-| 5 instances x 3w x 4t | 5 | 60 | ~550 (no improvement) | CPU saturated |
+| **3 instances x 3w x 4t** (current) | **3** | **36** | **~600** | **CPU** |
+| 4 instances x 3w x 4t | 4 | 48 | ~600 (no improvement) | CPU saturated |
+| 5 instances x 3w x 4t | 5 | 60 | ~600 (no improvement) | CPU saturated |
 
 Adding instances beyond 3 on a 2-vCPU machine yields no improvement because CPU is already the bottleneck. The additional instances just add memory and context-switching overhead.
 
@@ -112,9 +112,9 @@ Adding instances beyond 3 on a 2-vCPU machine yields no improvement because CPU 
 
 | Configuration | Total vCPUs | Nodes | Projected Max VU | Monthly Cost |
 |---|---|---|---|---|
-| 1x s-2vcpu-4gb (current) | 2 | 1 | ~550 | $24 |
-| 2x s-2vcpu-4gb + DO LB | 4 | 2 | ~1,100 | $60 ($48 + $12 LB) |
-| 3x s-2vcpu-4gb + DO LB | 6 | 3 | ~1,650 | $84 ($72 + $12 LB) |
+| 1x s-2vcpu-4gb (current) | 2 | 1 | ~600 | $24 |
+| 2x s-2vcpu-4gb + DO LB | 4 | 2 | ~1,200 | $60 ($48 + $12 LB) |
+| 3x s-2vcpu-4gb + DO LB | 6 | 3 | ~1,800 | $84 ($72 + $12 LB) |
 | 1x s-4vcpu-8gb + managed DB | 4 | 1 | ~1,500 | $63 ($48 + $15 DB) |
 
 ---
@@ -212,7 +212,7 @@ Every redirect writes an event row. Under Gold-tier load (500 VUs, ~80% redirect
 - PostgreSQL on SSD can handle ~5,000-10,000 simple INSERTs per second
 - The events table has no complex indexes, so insert performance is good
 
-**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~56 req/s total, this limit is far away.
+**Saturation point:** ~5,000 redirects/sec before event INSERTs become a bottleneck. With current throughput at ~232 req/s total, this limit is far away.
 
 ### 4. Redis Memory
 

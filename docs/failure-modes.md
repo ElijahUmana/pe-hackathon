@@ -236,7 +236,7 @@ When Grafana crashes:
 
 When Alertmanager crashes:
 
-1. **Alert notifications stop.** Discord messages are not sent.
+1. **Alert notifications stop.** The webhook receiver does not receive alerts, so local logging and optional Discord forwarding both stop.
 2. **Prometheus continues evaluating alert rules** and shows alerts as FIRING in its own UI (`http://localhost:9090/alerts`).
 3. **The application, metrics, and dashboards are unaffected.**
 

@@ -28,7 +28,7 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
               +----v----+ +---v---+ +----v----+
               | Flask 1 | | Flask 2| | Flask 3 |
               | Gunicorn| | Gunicorn| | Gunicorn|
-              | 4 workers| | 4 workers| | 4 workers|
+              | 3w x 4t | | 3w x 4t | | 3w x 4t |
               +----+----+ +---+---+ +----+----+
                    |           |           |
           +--------+-----------+-----------+--------+
@@ -89,7 +89,7 @@ Tested on a DigitalOcean s-2vcpu-4gb droplet (2 vCPUs, 4GB RAM) with 3 Flask ins
 - Cache hit ratio under load: **85%**
 - Throughput: **232 req/s** sustained at 500+ concurrent users
 - Auto-recovery from container crashes: **5-15 seconds**
-- Cost: **$24/month** ($0.17 per million requests)
+- Cost: **$24/month** ($0.04 per million requests)
 
 See [docs/bottleneck-report.md](docs/bottleneck-report.md) for the full analysis.
 
@@ -108,7 +108,7 @@ The system ships with a pre-built Grafana dashboard that visualizes all producti
 **Access:** `http://<host>:3000` (credentials: `admin` / `hackathon2026`)
 
 **Alerting:** Prometheus evaluates alert rules and sends firing alerts to Alertmanager, which routes them to a webhook receiver. The webhook receiver logs all alerts locally (to `/var/log/alerts.log` and individual evidence JSON files) and optionally forwards them to Discord if `DISCORD_WEBHOOK_URL` is configured. Alerts include:
-- ServiceDown (instance unreachable >1 min) -- Critical
+- ServiceDown (instance unreachable >15s) -- Critical
 - HighErrorRate (>10% 5xx for >2 min) -- Warning
 - HighLatency (p95 >2s for >3 min) -- Warning
 - HighMemoryUsage (>512MB for >5 min) -- Warning
@@ -244,6 +244,8 @@ See [docs/api.md](docs/api.md) for full request/response documentation.
 | [docs/failure-modes.md](docs/failure-modes.md) | Failure mode analysis for every component with cascading scenarios |
 | [docs/chaos-engineering.md](docs/chaos-engineering.md) | Chaos experiment playbook with methodology, tools, and continuous chaos strategy |
 | [docs/bottleneck-report.md](docs/bottleneck-report.md) | Load test results, per-endpoint latency, cache analysis, resource utilization |
+| [docs/alert-pipeline.md](docs/alert-pipeline.md) | Complete alerting pipeline: Prometheus rules, Alertmanager routing, webhook receiver |
+| [docs/incident-diagnosis.md](docs/incident-diagnosis.md) | Real incident report from chaos engineering with full investigation walkthrough |
 
 ## Seed Data
 
