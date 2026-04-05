@@ -29,5 +29,5 @@ EXPOSE 5000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
     CMD curl -f http://localhost:5000/health || exit 1
 
-# Production: gunicorn with 3 workers x 4 threads per instance (3 instances = 36 handlers)
-CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "3", "--threads", "4", "--timeout", "120", "--keep-alive", "5", "--worker-class", "gthread", "--access-logfile", "-", "run:app"]
+# Production: gunicorn with 2 workers x 2 threads per instance
+CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "2", "--timeout", "120", "--keep-alive", "5", "--worker-class", "gthread", "--access-logfile", "-", "run:app"]
