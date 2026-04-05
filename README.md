@@ -69,10 +69,23 @@ A production-grade URL shortener built for the MLH Production Engineering Hackat
 | Alerting | Alertmanager + Webhook Receiver | Local logging with optional Discord forwarding |
 | Load Testing | k6 | Bronze/Silver/Gold tier performance tests |
 | Logging | python-json-logger | Structured JSON logs to stdout |
+| Host Metrics | node-exporter | CPU, RAM, disk, network monitoring |
 | Container Runtime | Docker + Docker Compose | Orchestration, health checks, restart policies |
 | Package Manager | uv | Fast Python dependency management |
-| CI | GitHub Actions | Lint (ruff), test (pytest), coverage |
+| CI/CD | GitHub Actions | Lint, test, coverage gate (70%), deploy gate |
 | Language | Python 3.13 | |
+
+## Key Features
+
+- **Connection Pooling:** PooledPostgresqlDatabase with 20-connection pool eliminates per-request connect/disconnect overhead
+- **Cache Warm-Up:** Top 100 active URLs pre-loaded into Redis on startup for instant cache hits
+- **Composite Indexes:** `(short_code, is_active)` index optimizes the redirect hot path
+- **Graceful Degradation:** Redis failure falls back to direct DB queries transparently
+- **Soft Delete:** URLs are deactivated, not removed -- preserves history and analytics
+- **Input Hardening:** Type validation, length limits (255 chars), URL format verification, FK existence checks
+- **Bulk Import:** CSV upload endpoint with duplicate handling and row-level error recovery
+- **Auto-Recovery:** Docker `restart: unless-stopped` policy auto-restarts crashed containers
+- **Deploy Gating:** Deploy workflow depends on CI passing -- broken code cannot reach production
 
 ## Performance
 
@@ -107,13 +120,41 @@ The system ships with a pre-built Grafana dashboard that visualizes all producti
 
 **Access:** `http://<host>:3000` (credentials: `admin` / `hackathon2026`)
 
-**Alerting:** Prometheus evaluates alert rules and sends firing alerts to Alertmanager, which routes them to a webhook receiver. The webhook receiver logs all alerts locally (to `/var/log/alerts.log` and individual evidence JSON files) and optionally forwards them to Discord if `DISCORD_WEBHOOK_URL` is configured. Alerts include:
-- ServiceDown (instance unreachable >15s) -- Critical
-- HighErrorRate (>10% 5xx for >2 min) -- Warning
-- HighLatency (p95 >2s for >3 min) -- Warning
-- HighMemoryUsage (>512MB for >5 min) -- Warning
+**Alerting Pipeline:** Prometheus evaluates 10 alert rules and sends firing alerts to Alertmanager, which routes them to a custom webhook receiver. The webhook receiver:
+- Logs all alerts to `/var/log/alerts.log` with full JSON payloads
+- Saves individual evidence files per alert (timestamped JSON in `/app/evidence/`)
+- Forwards to **Discord** with rich embeds when `DISCORD_WEBHOOK_URL` is set
 
-See [docs/runbook.md](docs/runbook.md) for alert response procedures.
+**Discord Alert Features:**
+- Severity-based colors (red = critical, orange = warning, green = resolved)
+- Emoji indicators per severity level
+- Clickable Grafana dashboard link in every alert
+- Start/resolve timestamps for incident tracking
+- Auto-resolution notifications when issues clear
+
+**Alert Rules (10 total):**
+
+| Alert | Condition | Severity |
+|-------|-----------|----------|
+| ServiceDown | Instance unreachable >15s | Critical |
+| HighErrorRate | >10% 5xx errors for >2 min | Warning |
+| HighLatency | p95 >2s for >3 min | Warning |
+| HighMemoryUsage | >512MB for >5 min | Warning |
+| HostHighCpuUsage | >80% CPU for >5 min | Warning |
+| HostHighMemoryUsage | >85% memory for >5 min | Warning |
+| HostDiskSpaceLow | <15% free for >5 min | Warning |
+| HostDiskSpaceCritical | <5% free for >1 min | Critical |
+| HostNetworkErrors | >10 errors/sec for >5 min | Warning |
+| NodeExporterDown | Host metrics unavailable >30s | Critical |
+
+**Quick Setup for Discord Alerts:**
+```bash
+# Set the Discord webhook URL on the Droplet
+echo "DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/YOUR/WEBHOOK" >> .env
+docker compose up -d webhook-receiver
+```
+
+See [docs/runbook.md](docs/runbook.md) for alert response procedures and [docs/alert-pipeline.md](docs/alert-pipeline.md) for the complete pipeline architecture.
 
 ## Quick Start
 
