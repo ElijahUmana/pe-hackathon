@@ -1,0 +1,67 @@
+# HELP python_gc_objects_collected_total Objects collected during gc
+# TYPE python_gc_objects_collected_total counter
+python_gc_objects_collected_total{generation="0"} 11906.0
+python_gc_objects_collected_total{generation="1"} 2001.0
+python_gc_objects_collected_total{generation="2"} 0.0
+# HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
+# TYPE python_gc_objects_uncollectable_total counter
+python_gc_objects_uncollectable_total{generation="0"} 0.0
+python_gc_objects_uncollectable_total{generation="1"} 0.0
+python_gc_objects_uncollectable_total{generation="2"} 0.0
+# HELP python_gc_collections_total Number of times this generation was collected
+# TYPE python_gc_collections_total counter
+python_gc_collections_total{generation="0"} 46.0
+python_gc_collections_total{generation="1"} 4.0
+python_gc_collections_total{generation="2"} 0.0
+# HELP python_info Python platform information
+# TYPE python_info gauge
+python_info{implementation="CPython",major="3",minor="13",patchlevel="12",version="3.13.12"} 1.0
+# HELP process_virtual_memory_bytes Virtual memory size in bytes.
+# TYPE process_virtual_memory_bytes gauge
+process_virtual_memory_bytes 3.91565312e+08
+# HELP process_resident_memory_bytes Resident memory size in bytes.
+# TYPE process_resident_memory_bytes gauge
+process_resident_memory_bytes 5.7974784e+07
+# HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
+# TYPE process_start_time_seconds gauge
+process_start_time_seconds 1.77537001276e+09
+# HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
+# TYPE process_cpu_seconds_total counter
+process_cpu_seconds_total 7.59
+# HELP process_open_fds Number of open file descriptors.
+# TYPE process_open_fds gauge
+process_open_fds 33.0
+# HELP process_max_fds Maximum number of open file descriptors.
+# TYPE process_max_fds gauge
+process_max_fds 1024.0
+# HELP http_requests_total Total HTTP requests
+# TYPE http_requests_total counter
+http_requests_total{endpoint="unknown",method="GET",status="404"} 2.0
+http_requests_total{endpoint="urls.redirect_short_url",method="GET",status="302"} 1263.0
+http_requests_total{endpoint="urls.list_urls",method="GET",status="200"} 161.0
+http_requests_total{endpoint="urls.create_url",method="POST",status="201"} 184.0
+# HELP http_request_duration_seconds HTTP request latency in seconds
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{endpoint="urls.redirect_short_url",le="0.005",method="GET"} 599.0
+http_request_duration_seconds_bucket{endpoint="urls.redirect_short_url",le="0.01",method="GET"} 969.0
+http_request_duration_seconds_bucket{endpoint="urls.redirect_short_url",le="0.025",method="GET"} 1166.0
+http_request_duration_seconds_bucket{endpoint="urls.redirect_short_url",le="0.05",method="GET"} 1224.0
+http_request_duration_seconds_bucket{endpoint="urls.redirect_short_url",le="0.1",method="GET"} 1259.0
+http_request_duration_seconds_bucket{endpoint="urls.redirect_short_url",le="0.25",method="GET"} 1263.0
+http_request_duration_seconds_count{endpoint="urls.redirect_short_url",method="GET"} 1263.0
+http_request_duration_seconds_sum{endpoint="urls.redirect_short_url",method="GET"} 12.304141759872437
+# HELP urls_created_total Total URLs created
+# TYPE urls_created_total counter
+urls_created_total 184.0
+# HELP redirects_total Total redirects served
+# TYPE redirects_total counter
+redirects_total 1264.0
+# HELP cache_hits_total Total cache hits
+# TYPE cache_hits_total counter
+cache_hits_total 1264.0
+# HELP cache_misses_total Total cache misses
+# TYPE cache_misses_total counter
+cache_misses_total 0.0
+# HELP active_urls Number of active URLs
+# TYPE active_urls gauge
+active_urls 2663.0
