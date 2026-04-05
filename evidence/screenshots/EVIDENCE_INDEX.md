@@ -233,3 +233,4 @@ Full k6 load test results (raw terminal output) are stored in `evidence/scalabil
 **39. Capacity plan**
 - Link: https://github.com/ElijahUmana/pe-hackathon/blob/main/docs/capacity-plan.md
 - Note: Resource utilization per container, throughput projections by droplet size, cost analysis ($0.015/million requests), SLA definition, scaling recommendations.
+
