@@ -33,3 +33,5 @@ Thumbs.db
 # Judging (not visible to participants)
 judging/
 .coverage
+DEVPOST.md
+DEMO_SCRIPT.md
