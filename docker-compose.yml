@@ -46,7 +46,7 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
       REDIS_URL: redis://redis:6379/0
-      LOG_LEVEL: INFO
+      LOG_LEVEL: WARNING
       INSTANCE_ID: app1
     depends_on:
       db:
@@ -65,7 +65,7 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
       REDIS_URL: redis://redis:6379/0
-      LOG_LEVEL: INFO
+      LOG_LEVEL: WARNING
       INSTANCE_ID: app2
     depends_on:
       db:
@@ -84,7 +84,7 @@ services:
       DATABASE_USER: postgres
       DATABASE_PASSWORD: postgres
       REDIS_URL: redis://redis:6379/0
-      LOG_LEVEL: INFO
+      LOG_LEVEL: WARNING
       INSTANCE_ID: app3
     depends_on:
       db:

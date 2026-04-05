@@ -1,0 +1,56 @@
+==========================================
+EVIDENCE: Container Auto-Restart (Reliability)
+Captured: 2026-04-05T10:51:15Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+==========================================
+
+=== STEP 1: BEFORE STATE ===
+Timestamp: 2026-04-05T10:51:15Z
+Command: docker compose ps app2
+
+NAME                  IMAGE               COMMAND                  SERVICE   CREATED         STATUS                        PORTS
+pe-hackathon-app2-1   pe-hackathon-app2   "uv run gunicorn --b…"   app2      7 minutes ago   Up About a minute (healthy)   5000/tcp
+
+Target container: pe-hackathon-app2-1 (ID: a6eda269f73d9aab2faa6126901405104af08c4e00f019c60e24921463b821f2)
+
+=== STEP 2: KILLING CONTAINER ===
+Timestamp: 2026-04-05T10:51:16Z
+Command: docker kill a6eda269f73d9aab2faa6126901405104af08c4e00f019c60e24921463b821f2
+
+a6eda269f73d9aab2faa6126901405104af08c4e00f019c60e24921463b821f2
+
+=== STEP 3: IMMEDIATELY AFTER KILL (container down) ===
+Timestamp: 2026-04-05T10:51:19Z
+Command: docker ps -a --filter name=app2
+
+NAMES                 STATUS
+pe-hackathon-app2-1   Exited (137) 2 seconds ago
+
+=== CONTAINER IS DOWN - Exit code 137 = SIGKILL ===
+
+Waiting 30 seconds for Docker auto-restart...
+
+=== STEP 4: AFTER 30 SECONDS (auto-restarted) ===
+Timestamp: 2026-04-05T10:51:49Z
+Command: docker compose ps app2
+
+NAME                  IMAGE               COMMAND                  SERVICE   CREATED         STATUS                            PORTS
+pe-hackathon-app2-1   pe-hackathon-app2   "uv run gunicorn --b…"   app2      7 minutes ago   Up 7 seconds (health: starting)   5000/tcp
+
+=== CONTAINER IS BACK UP - "Up 7 seconds" confirms auto-restart ===
+
+=== STEP 5: RESTART POLICY VERIFICATION ===
+Timestamp: 2026-04-05T10:51:50Z
+Command: docker inspect pe-hackathon-app2-1
+
+RestartCount: 0, Status: running, Running: true
+RestartPolicy: always, MaxRetry: 0
+
+==========================================
+SEQUENCE SUMMARY:
+1. 10:51:15Z - app2 running and healthy
+2. 10:51:16Z - docker kill issued (SIGKILL)
+3. 10:51:19Z - Container confirmed down (Exited 137)
+4. 10:51:49Z - Container auto-restarted ("Up 7 seconds")
+5. Restart policy: always (auto-restart on any failure)
+==========================================

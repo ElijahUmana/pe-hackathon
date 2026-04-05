@@ -1,0 +1,125 @@
+==========================================
+EVIDENCE: Prometheus Alert Rules Configuration
+Captured: 2026-04-05T10:46:08Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+Command: docker exec pe-hackathon-prometheus-1 cat /etc/prometheus/alert_rules.yml
+==========================================
+
+groups:
+  - name: url-shortener-alerts
+    rules:
+      - alert: ServiceDown
+        expr: up{job="flask-app"} == 0
+        for: 15s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Flask instance {{ $labels.instance }} is down"
+          description: "{{ $labels.instance }} has been unreachable for more than 15 seconds."
+
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (instance)
+            /
+            sum(rate(http_requests_total[5m])) by (instance)
+          ) > 0.10
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate on {{ $labels.instance }}"
+          description: "Error rate is {{ $value | humanizePercentage }} over the last 5 minutes."
+
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance)) > 2.0
+        for: 3m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.instance }}"
+          description: "p95 latency is {{ $value }}s, exceeding 2s threshold."
+
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 512
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}MB."
+
+  - name: infrastructure-alerts
+    rules:
+      - alert: NodeExporterDown
+        expr: up{job="node-exporter"} == 0
+        for: 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node exporter is down"
+          description: "Cannot scrape system metrics from node-exporter."
+
+      - alert: HostHighCpuUsage
+        expr: 100 - (avg by(instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}%."
+
+      - alert: HostHighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value }}%."
+
+      - alert: HostDiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 15
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Only {{ $value }}% disk space remaining."
+
+      - alert: HostDiskSpaceCritical
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100 < 5
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Critical disk space on {{ $labels.instance }}"
+          description: "Only {{ $value }}% disk space remaining."
+
+      - alert: HostNetworkErrors
+        expr: rate(node_network_receive_errs_total[5m]) + rate(node_network_transmit_errs_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Network errors on {{ $labels.instance }}"
+          description: "Network error rate is {{ $value }} errors/sec."
+
+==========================================
+ALERT RULES SUMMARY (11 total):
+
+Application Alerts (4):
+  1. ServiceDown - Flask instance unreachable >15s (critical)
+  2. HighErrorRate - 5xx rate >10% for 2min (warning)
+  3. HighLatency - p95 latency >2s for 3min (warning)
+  4. HighMemoryUsage - Process memory >512MB for 5min (warning)
+
+Infrastructure Alerts (7):
+  5. NodeExporterDown - System metrics unavailable >30s (critical)
+  6. HostHighCpuUsage - CPU >80% for 5min (warning)
+  7. HostHighMemoryUsage - Memory >85% for 5min (warning)
+  8. HostDiskSpaceLow - Disk <15% free for 5min (warning)
+  9. HostDiskSpaceCritical - Disk <5% free for 1min (critical)
+  10. HostNetworkErrors - Network errors >10/s for 5min (warning)
+==========================================

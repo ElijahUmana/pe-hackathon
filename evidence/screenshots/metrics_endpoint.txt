@@ -1,7 +1,14 @@
+==========================================
+EVIDENCE: Prometheus Metrics Endpoint
+Captured: 2026-04-05T10:46:06Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+Command: curl -s http://localhost:80/metrics
+==========================================
+
 # HELP python_gc_objects_collected_total Objects collected during gc
 # TYPE python_gc_objects_collected_total counter
 python_gc_objects_collected_total{generation="0"} 680.0
-python_gc_objects_collected_total{generation="1"} 226.0
+python_gc_objects_collected_total{generation="1"} 236.0
 python_gc_objects_collected_total{generation="2"} 0.0
 # HELP python_gc_objects_uncollectable_total Uncollectable objects found during GC
 # TYPE python_gc_objects_uncollectable_total counter
@@ -10,41 +17,67 @@ python_gc_objects_uncollectable_total{generation="1"} 0.0
 python_gc_objects_uncollectable_total{generation="2"} 0.0
 # HELP python_gc_collections_total Number of times this generation was collected
 # TYPE python_gc_collections_total counter
-python_gc_collections_total{generation="0"} 39.0
-python_gc_collections_total{generation="1"} 3.0
+python_gc_collections_total{generation="0"} 93.0
+python_gc_collections_total{generation="1"} 8.0
 python_gc_collections_total{generation="2"} 0.0
 # HELP python_info Python platform information
 # TYPE python_info gauge
 python_info{implementation="CPython",major="3",minor="13",patchlevel="12",version="3.13.12"} 1.0
 # HELP process_virtual_memory_bytes Virtual memory size in bytes.
 # TYPE process_virtual_memory_bytes gauge
-process_virtual_memory_bytes 1.7399808e+08
+process_virtual_memory_bytes 2.53837312e+08
 # HELP process_resident_memory_bytes Resident memory size in bytes.
 # TYPE process_resident_memory_bytes gauge
-process_resident_memory_bytes 6.639616e+07
+process_resident_memory_bytes 1.263616e+07
 # HELP process_start_time_seconds Start time of the process since unix epoch in seconds.
 # TYPE process_start_time_seconds gauge
-process_start_time_seconds 1.77536293185e+09
+process_start_time_seconds 1.77538585089e+09
 # HELP process_cpu_seconds_total Total user and system CPU time spent in seconds.
 # TYPE process_cpu_seconds_total counter
-process_cpu_seconds_total 1.94
+process_cpu_seconds_total 3.56
 # HELP process_open_fds Number of open file descriptors.
 # TYPE process_open_fds gauge
-process_open_fds 14.0
+process_open_fds 15.0
 # HELP process_max_fds Maximum number of open file descriptors.
 # TYPE process_max_fds gauge
 process_max_fds 1024.0
 # HELP http_requests_total Total HTTP requests
 # TYPE http_requests_total counter
-http_requests_total{endpoint="unknown",method="GET",status="404"} 1.0
-# HELP http_requests_created Total HTTP requests
-# TYPE http_requests_created gauge
-http_requests_created{endpoint="unknown",method="GET",status="404"} 1.775363007782287e+09
 # HELP http_request_duration_seconds HTTP request latency in seconds
 # TYPE http_request_duration_seconds histogram
-http_request_duration_seconds_bucket{endpoint="unknown",le="0.005",method="GET"} 1.0
-http_request_duration_seconds_bucket{endpoint="unknown",le="0.01",method="GET"} 1.0
-http_request_duration_seconds_bucket{endpoint="unknown",le="0.025",method="GET"} 1.0
-http_request_duration_seconds_bucket{endpoint="unknown",le="0.05",method="GET"} 1.0
-http_request_duration_seconds_bucket{endpoint="unknown",le="0.1",method="GET"} 1.0
-http_request_duration_seconds_bucket{endpoint="unknown",le="0.25",method="GET"} 1.0
+# HELP urls_created_total Total URLs created
+# TYPE urls_created_total counter
+urls_created_total 0.0
+# HELP urls_created_created Total URLs created
+# TYPE urls_created_created gauge
+urls_created_created 1.7753858629270759e+09
+# HELP redirects_total Total redirects served
+# TYPE redirects_total counter
+redirects_total 0.0
+# HELP redirects_created Total redirects served
+# TYPE redirects_created gauge
+redirects_created 1.775385862927101e+09
+# HELP cache_hits_total Total cache hits
+# TYPE cache_hits_total counter
+cache_hits_total 0.0
+# HELP cache_hits_created Total cache hits
+# TYPE cache_hits_created gauge
+cache_hits_created 1.7753858629271193e+09
+# HELP cache_misses_total Total cache misses
+# TYPE cache_misses_total counter
+cache_misses_total 0.0
+# HELP cache_misses_created Total cache misses
+# TYPE cache_misses_created gauge
+cache_misses_created 1.775385862927136e+09
+# HELP active_urls Number of active URLs
+# TYPE active_urls gauge
+active_urls 29942.0
+
+==========================================
+KEY METRICS:
+- active_urls: 29,942 URLs in the system
+- Custom counters: urls_created_total, redirects_total, cache_hits_total, cache_misses_total
+- Process metrics: memory (253MB virtual, 12MB resident), CPU (3.56s), file descriptors (15/1024)
+- Python info: CPython 3.13.12
+- All metrics in Prometheus exposition format, scraped by Prometheus every 10s
+==========================================

@@ -1,0 +1,58 @@
+==========================================
+EVIDENCE: Health Check DB Failure Detection
+Captured: 2026-04-05T10:51:56Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+==========================================
+
+=== STEP 1: Health check with DB running (baseline) ===
+Timestamp: 2026-04-05T10:51:56Z
+Command: curl -s http://localhost:80/health
+
+{
+  "database": "connected",
+  "status": "ok"
+}
+HTTP_CODE: 200
+
+=== STEP 2: Stopping the database container ===
+Timestamp: 2026-04-05T10:51:56Z
+Command: docker compose stop db
+
+=== STEP 3: Health check with DB down ===
+Timestamp: 2026-04-05T10:52:03Z
+Command: curl -s http://localhost:80/health
+
+{
+  "database": "disconnected",
+  "status": "degraded"
+}
+HTTP_CODE: 200
+
+=== DB IS DOWN - Health check correctly reports "degraded" status ===
+=== Database shows "disconnected" instead of "connected" ===
+
+=== STEP 4: Restarting the database container ===
+Timestamp: 2026-04-05T10:52:03Z
+Command: docker compose start db
+
+=== STEP 5: Health check after DB restored ===
+Timestamp: 2026-04-05T10:53:19Z
+Command: curl -s http://localhost:80/health
+
+{
+  "database": "connected",
+  "status": "ok"
+}
+HTTP_CODE: 200
+
+==========================================
+SEQUENCE SUMMARY:
+1. 10:51:56Z - Baseline: database=connected, status=ok (HTTP 200)
+2. 10:51:56Z - Killed database container (docker compose stop db)
+3. 10:52:03Z - Health degraded: database=disconnected, status=degraded
+4. 10:52:03Z - Restarted database (docker compose start db)
+5. 10:53:19Z - Recovered: database=connected, status=ok (HTTP 200)
+
+The /health endpoint correctly detects database connectivity loss
+and reports degraded status. It recovers once the DB is restored.
+==========================================

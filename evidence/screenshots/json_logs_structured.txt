@@ -1,0 +1,44 @@
+==========================================
+EVIDENCE: Structured JSON Logs from Flask Container
+Captured: 2026-04-05T10:46:04Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+Command: docker compose logs app1 --tail 30
+==========================================
+
+[2026-04-05 10:44:11 +0000] [10] [INFO] Starting gunicorn 25.3.0
+[2026-04-05 10:44:11 +0000] [10] [INFO] Listening at: http://0.0.0.0:5000 (10)
+[2026-04-05 10:44:11 +0000] [10] [INFO] Using worker: gthread
+[2026-04-05 10:44:11 +0000] [17] [INFO] Booting worker with pid: 17
+[2026-04-05 10:44:11 +0000] [18] [INFO] Booting worker with pid: 18
+[2026-04-05 10:44:13 +0000] [10] [INFO] Control socket listening at /home/appuser/.gunicorn/gunicorn.ctl
+{"timestamp": "2026-04-05 10:44:37,319", "name": "app.cache", "level": "INFO", "message": "Cache warm-up complete: 29942 URLs loaded"}
+{"timestamp": "2026-04-05 10:44:38,372", "name": "app.cache", "level": "INFO", "message": "Cache warm-up complete: 29942 URLs loaded"}
+127.0.0.1 - - [05/Apr/2026:10:44:38 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.2 - - [05/Apr/2026:10:44:38 +0000] "GET /metrics HTTP/1.1" 200 3055 "-" "Prometheus/3.11.0"
+172.18.0.2 - - [05/Apr/2026:10:44:38 +0000] "GET /metrics HTTP/1.1" 200 3055 "-" "Prometheus/3.11.0"
+172.18.0.2 - - [05/Apr/2026:10:44:40 +0000] "GET /metrics HTTP/1.1" 200 3055 "-" "Prometheus/3.11.0"
+127.0.0.1 - - [05/Apr/2026:10:44:46 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.2 - - [05/Apr/2026:10:44:50 +0000] "GET /metrics HTTP/1.1" 200 3054 "-" "Prometheus/3.11.0"
+172.18.0.2 - - [05/Apr/2026:10:45:00 +0000] "GET /metrics HTTP/1.1" 200 3057 "-" "Prometheus/3.11.0"
+172.18.0.2 - - [05/Apr/2026:10:45:10 +0000] "GET /metrics HTTP/1.1" 200 3069 "-" "Prometheus/3.11.0"
+{"timestamp": "2026-04-05 10:45:16,305", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/SDK/webLanguage", "status": 404, "remote_addr": "172.18.0.12", "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36 Edg/90.0.818.46"}
+172.18.0.12 - - [05/Apr/2026:10:45:16 +0000] "GET /SDK/webLanguage HTTP/1.1" 404 27 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/90.0.4430.85 Safari/537.36 Edg/90.0.818.46"
+127.0.0.1 - - [05/Apr/2026:10:45:16 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.2 - - [05/Apr/2026:10:45:20 +0000] "GET /metrics HTTP/1.1" 200 4687 "-" "Prometheus/3.11.0"
+172.18.0.2 - - [05/Apr/2026:10:45:30 +0000] "GET /metrics HTTP/1.1" 200 3057 "-" "Prometheus/3.11.0"
+172.18.0.2 - - [05/Apr/2026:10:45:40 +0000] "GET /metrics HTTP/1.1" 200 3056 "-" "Prometheus/3.11.0"
+127.0.0.1 - - [05/Apr/2026:10:45:46 +0000] "GET /metrics HTTP/1.1" 200 3056 "-" "curl/8.14.1"
+127.0.0.1 - - [05/Apr/2026:10:45:46 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.2 - - [05/Apr/2026:10:45:50 +0000] "GET /metrics HTTP/1.1" 200 4701 "-" "Prometheus/3.11.0"
+172.18.0.2 - - [05/Apr/2026:10:46:00 +0000] "GET /metrics HTTP/1.1" 200 3057 "-" "Prometheus/3.11.0"
+
+==========================================
+KEY OBSERVATIONS:
+- Structured JSON logs with timestamp, name, level, message fields
+- Request logs include method, path, status, remote_addr, user_agent
+- Gunicorn access logs with standard CLF format
+- Cache warm-up events showing 29,942 URLs loaded
+- Prometheus scraping /metrics every 10 seconds
+- Health checks running every ~30 seconds
+- Real external traffic visible (bot scanning /SDK/webLanguage)
+==========================================

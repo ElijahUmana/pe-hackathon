@@ -1,12 +1,43 @@
-NAME                              STATUS                        PORTS
-pe-hackathon-alertmanager-1       Up 3 hours                    0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp
-pe-hackathon-app1-1               Up 14 minutes (healthy)       5000/tcp
-pe-hackathon-app2-1               Up About a minute (healthy)   5000/tcp
-pe-hackathon-app3-1               Up 14 minutes (healthy)       5000/tcp
-pe-hackathon-db-1                 Up 36 seconds (healthy)       0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
-pe-hackathon-grafana-1            Up 3 hours                    0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
-pe-hackathon-nginx-1              Up 3 hours                    0.0.0.0:80->80/tcp, [::]:80->80/tcp
-pe-hackathon-node-exporter-1      Up 3 hours                    9100/tcp
-pe-hackathon-prometheus-1         Up 3 hours                    0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
-pe-hackathon-redis-1              Up 3 hours (healthy)          0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
-pe-hackathon-webhook-receiver-1   Up 14 minutes                 0.0.0.0:9094->9094/tcp, [::]:9094->9094/tcp
+==========================================
+EVIDENCE: docker compose ps - Multi-Instance Architecture
+Captured: 2026-04-05T10:46:00Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+Command: docker compose ps
+==========================================
+
+NAME                              SERVICE            STATUS                        PORTS
+pe-hackathon-alertmanager-1       alertmanager       Up About an hour              0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp
+pe-hackathon-app1-1               app1               Up About a minute (healthy)   5000/tcp
+pe-hackathon-app2-1               app2               Up About a minute (healthy)   5000/tcp
+pe-hackathon-app3-1               app3               Up About a minute (healthy)   5000/tcp
+pe-hackathon-db-1                 db                 Up About an hour (healthy)    0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+pe-hackathon-grafana-1            grafana            Up About an hour              0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+pe-hackathon-nginx-1              nginx              Up About an hour              0.0.0.0:80->80/tcp, [::]:80->80/tcp
+pe-hackathon-node-exporter-1      node-exporter      Up About an hour              9100/tcp
+pe-hackathon-prometheus-1         prometheus         Up About an hour              0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+pe-hackathon-redis-1              redis              Up About an hour (healthy)    0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+pe-hackathon-webhook-receiver-1   webhook-receiver   Up About a minute             0.0.0.0:9094->9094/tcp, [::]:9094->9094/tcp
+
+==========================================
+CONTAINER COUNT: 11 running containers
+==========================================
+
+--- Health Status Detail ---
+  app1: healthy
+  app2: healthy
+  app3: healthy
+  db: healthy
+  redis: healthy
+
+==========================================
+ARCHITECTURE SUMMARY:
+- 3x Flask app instances (app1, app2, app3) with health checks
+- 1x Nginx load balancer (port 80)
+- 1x PostgreSQL database (port 5432) with health check
+- 1x Redis cache (port 6379) with health check
+- 1x Prometheus metrics (port 9090)
+- 1x Grafana dashboards (port 3000)
+- 1x Alertmanager (port 9093)
+- 1x Node Exporter (system metrics)
+- 1x Webhook Receiver (port 9094)
+==========================================

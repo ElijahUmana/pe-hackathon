@@ -1,22 +1,56 @@
-=== Created URL with short_code: X44IVc ===
+==========================================
+EVIDENCE: Cache Hit/Miss Proof (X-Cache Headers)
+Captured: 2026-04-05T10:51:06Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+==========================================
 
-=== FIRST REQUEST (expect MISS) ===
-HTTP/1.1 302 FOUND
-Server: nginx/1.29.7
-Date: Sun, 05 Apr 2026 07:06:37 GMT
-Content-Type: text/html; charset=utf-8
-Content-Length: 249
-Connection: keep-alive
-Location: https://example.com/cache-proof
-X-Cache: MISS
+=== STEP 1: Create a test short URL ===
+Timestamp: 2026-04-05T10:51:06Z
+Command: curl -s -X POST http://localhost:80/urls -H 'Content-Type: application/json' -d '{"url": "https://example.com/cache-evidence-1775386266"}'
 
+Response: {
+  "created_at": "2026-04-05T10:51:06",
+  "id": 30407,
+  "is_active": true,
+  "original_url": "https://example.com/cache-evidence-1775386266",
+  "short_code": "KyjKGD",
+  "title": null,
+  "updated_at": "2026-04-05T10:51:06",
+  "user_id": null
+}
+Short code: KyjKGD
 
-=== SECOND REQUEST (expect HIT) ===
-HTTP/1.1 302 FOUND
-Server: nginx/1.29.7
-Date: Sun, 05 Apr 2026 07:06:37 GMT
-Content-Type: text/html; charset=utf-8
-Content-Length: 249
-Connection: keep-alive
-Location: https://example.com/cache-proof
-X-Cache: HIT
+=== STEP 2: Flush Redis cache for clean test ===
+Timestamp: 2026-04-05T10:51:07Z
+Command: docker exec pe-hackathon-redis-1 redis-cli FLUSHALL
+Result: OK
+
+=== STEP 3: FIRST REQUEST (expect X-Cache: MISS) ===
+Timestamp: 2026-04-05T10:51:09Z
+Command: curl -v http://localhost:80/KyjKGD
+
+> GET /KyjKGD HTTP/1.1
+< HTTP/1.1 302 FOUND
+< Location: https://example.com/cache-evidence-1775386266
+< X-Cache: MISS
+
+=== CACHE MISS - URL resolved from PostgreSQL database ===
+
+=== STEP 4: SECOND REQUEST (expect X-Cache: HIT) ===
+Timestamp: 2026-04-05T10:51:10Z
+Command: curl -v http://localhost:80/KyjKGD
+
+> GET /KyjKGD HTTP/1.1
+< HTTP/1.1 302 FOUND
+< Location: https://example.com/cache-evidence-1775386266
+< X-Cache: HIT
+
+=== CACHE HIT - URL resolved from Redis cache (no DB query) ===
+
+==========================================
+CONCLUSION:
+- First request: X-Cache: MISS (lookup went to PostgreSQL)
+- Second request: X-Cache: HIT (served from Redis cache)
+- Both return HTTP 302 redirect to the original URL
+- Redis caching eliminates database round-trips for repeat lookups
+==========================================

@@ -1,0 +1,54 @@
+==========================================
+EVIDENCE: Error Handling Demo - Clean JSON Error Responses
+Captured: 2026-04-05T10:46:15Z
+Host: ElijahUmana-Droplet-1 (146.190.158.231)
+==========================================
+
+--- Test 1: POST /urls with no Content-Type ---
+Command: curl -s -w '\nHTTP_CODE: %{http_code}' -X POST http://localhost:80/urls -d 'raw body'
+
+{
+  "error": "Content-Type must be application/json"
+}
+HTTP_CODE: 400
+
+--- Test 2: POST /urls with invalid URL ---
+Command: curl -s -w '\nHTTP_CODE: %{http_code}' -X POST http://localhost:80/urls -H 'Content-Type: application/json' -d '{"url": "not-a-url"}'
+
+{
+  "error": "A valid HTTP or HTTPS URL is required"
+}
+HTTP_CODE: 400
+
+--- Test 3: POST /urls with empty URL ---
+Command: curl -s -w '\nHTTP_CODE: %{http_code}' -X POST http://localhost:80/urls -H 'Content-Type: application/json' -d '{"url": ""}'
+
+{
+  "error": "url is required"
+}
+HTTP_CODE: 400
+
+--- Test 4: GET /users/99999 (non-existent user) ---
+Command: curl -s -w '\nHTTP_CODE: %{http_code}' http://localhost:80/users/99999
+
+{
+  "error": "User not found"
+}
+HTTP_CODE: 404
+
+--- Test 5: POST /users with invalid email ---
+Command: curl -s -w '\nHTTP_CODE: %{http_code}' -X POST http://localhost:80/users -H 'Content-Type: application/json' -d '{"username": "test", "email": "invalid-email"}'
+
+{
+  "error": "Invalid email format"
+}
+HTTP_CODE: 400
+
+==========================================
+SUMMARY:
+All error responses return:
+- Clean JSON format: {"error": "<descriptive message>"}
+- Appropriate HTTP status codes (400 Bad Request, 404 Not Found)
+- Human-readable, specific error messages
+- No stack traces or internal details leaked
+==========================================
