@@ -446,10 +446,10 @@ This table provides detailed recovery time measurements for each component, brok
 |------------------|-------------------------|-----------------------------------|
 | Kill 1 of 3 Flask instances | 0-2s (in-flight requests only) | 5-15s |
 | Kill all 3 Flask instances | 5-15s | 15-20s |
-| Kill Redis | 0s (graceful degradation) | 1-5s (restart) + 300s (cache warm-up) |
-| Kill PostgreSQL | 10-30s (DB-dependent ops) | 10-30s (restart) + 60-300s (cache repopulation) |
+| Kill Redis | 0s (graceful degradation) | 1-5s (restart) + instant warm-up (all URLs pipelined on startup) |
+| Kill PostgreSQL | 10-30s (DB-dependent ops) | 10-30s (restart), cached redirects continue for 600s TTL |
 | Kill Nginx | 1-3s | 1-3s |
-| Kill PostgreSQL + Redis | 10-30s | 10-30s (DB restart) + 300s (cache rebuild) |
+| Kill PostgreSQL + Redis | 10-30s | 10-30s (DB restart) + instant cache warm-up on reconnect |
 
 ### Recovery Phase Definitions
 

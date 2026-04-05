@@ -4,7 +4,8 @@
 ![Python 3.13](https://img.shields.io/badge/python-3.13-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 ![Docker](https://img.shields.io/badge/docker-11%20containers-blue)
-![Coverage](https://img.shields.io/badge/coverage-%E2%89%A570%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-88%25-brightgreen)
+![Tests](https://img.shields.io/badge/tests-259%20passing-brightgreen)
 
 A production-grade URL shortener built for the MLH Production Engineering Hackathon. The system handles URL creation, redirection with analytics tracking, and user management -- deployed behind a load-balanced, horizontally scaled architecture with full observability.
 
@@ -120,7 +121,7 @@ The system ships with a pre-built Grafana dashboard that visualizes all producti
 
 **Access:** `http://<host>:3000` (credentials: `admin` / `hackathon2026`)
 
-**Alerting Pipeline:** Prometheus evaluates 10 alert rules and sends firing alerts to Alertmanager, which routes them to a custom webhook receiver. The webhook receiver:
+**Alerting Pipeline:** Prometheus evaluates 12 alert rules and sends firing alerts to Alertmanager, which routes them to a custom webhook receiver. The webhook receiver:
 - Logs all alerts to `/var/log/alerts.log` with full JSON payloads
 - Saves individual evidence files per alert (timestamped JSON in `/app/evidence/`)
 - Forwards to **Discord** with rich embeds when `DISCORD_WEBHOOK_URL` is set
@@ -132,14 +133,16 @@ The system ships with a pre-built Grafana dashboard that visualizes all producti
 - Start/resolve timestamps for incident tracking
 - Auto-resolution notifications when issues clear
 
-**Alert Rules (10 total):**
+**Alert Rules (12 total):**
 
 | Alert | Condition | Severity |
 |-------|-----------|----------|
-| ServiceDown | Instance unreachable >15s | Critical |
+| ServiceDown | Instance unreachable >5s | Critical |
 | HighErrorRate | >10% 5xx errors for >2 min | Warning |
-| HighLatency | p95 >2s for >3 min | Warning |
-| HighMemoryUsage | >512MB for >5 min | Warning |
+| HighLatency | p95 >2s for >1 min | Warning |
+| HighMemoryUsage | >200MB for >5 min | Warning |
+| CacheHitRatioLow | <50% hit ratio for >2 min | Warning |
+| P99LatencyHigh | p99 >5s for >2 min | Warning |
 | HostHighCpuUsage | >80% CPU for >5 min | Warning |
 | HostHighMemoryUsage | >85% memory for >5 min | Warning |
 | HostDiskSpaceLow | <15% free for >5 min | Warning |

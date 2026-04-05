@@ -152,10 +152,10 @@ Performance is excellent at 50 users. The application comfortably handles this l
 ## Silver Scale-Out (200 Concurrent Users)
 
 ```
-http_req_duration p95: 1,630ms
+http_req_duration p95: 1,040ms
 http_req_failed:      0.00%
-http_reqs:            139 req/s
-redirect_latency p95: 1,640ms
+http_reqs:            183 req/s
+redirect_latency p95: 1,050ms
 ```
 
 At 200 concurrent users, latency increases significantly but error rate remains at 0%. The bottleneck shifts to CPU saturation on the 1-vCPU droplet -- Gunicorn workers across 3 instances compete for CPU time.
@@ -167,10 +167,10 @@ At 200 concurrent users, latency increases significantly but error rate remains 
 ## Gold Tsunami (500-600 Concurrent Users)
 
 ```
-http_req_duration p95: 4,680ms
+http_req_duration p95: 2,970ms
 http_req_failed:      0.00%
-http_reqs:            158 req/s
-redirect_latency p95: 4,695ms
+http_reqs:            217 req/s
+redirect_latency p95: 2,985ms
 errors:               0.00% (< 5% threshold)
 ```
 
@@ -203,7 +203,7 @@ This section tracks the impact of each optimization applied to the system. Measu
 | Redirect p50 | ~450ms | ~8ms (hit), ~35ms (miss) | 98% reduction (hit) |
 | PostgreSQL queries/sec | ~380 | ~30 | 92% reduction |
 | DB connection utilization | 95% | 12% | 87% reduction |
-| Overall p95 | ~4,200ms | ~1,630ms | 61% reduction |
+| Overall p95 | ~4,200ms | ~1,040ms | 75% reduction |
 
 ### Optimization: Horizontal Scaling (1 to 3 Flask Instances)
 

@@ -96,7 +96,7 @@ When one of the three Flask+Gunicorn instances crashes:
 2. **Nginx routes subsequent requests to the remaining healthy instances.** The failed instance is temporarily removed from the pool.
 3. **Overall capacity drops by approximately 33%** (from 12 handlers to 8).
 4. **Prometheus shows the instance as DOWN** (`up{instance="appN:5000"} == 0`).
-5. **ServiceDown alert fires** after 15 seconds (`for: 15s`).
+5. **ServiceDown alert fires** after 5 seconds (`for: 5s`).
 
 ### Impact Assessment
 

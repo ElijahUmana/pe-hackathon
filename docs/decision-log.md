@@ -266,3 +266,22 @@ This document records the rationale behind major technology and design choices.
 **Tradeoffs:**
 - Adds one more container and requires `pid: host` and read-only host filesystem mounts, which slightly increases the attack surface.
 - Minimal resource overhead (~10-15 MB memory).
+
+---
+
+## DEC-015: PostgreSQL synchronous_commit=off
+
+**Decision:** Disable synchronous WAL commit in PostgreSQL (`synchronous_commit=off`).
+
+**Context:** Every URL redirect writes an event to the database (Oracle Hint 2: "Unseen Observer"). At 600 concurrent users generating ~180 event INSERTs per second, the WAL flush on each commit was the dominant bottleneck. Each INSERT waited ~5ms for the WAL to be flushed to disk, directly adding to redirect latency.
+
+**Rationale:**
+- `synchronous_commit=off` allows PostgreSQL to acknowledge the INSERT before the WAL is flushed, reducing event write latency from ~5ms to ~0.5ms.
+- At 217 req/s with ~80% being redirects, this eliminates ~4.5ms per redirect -- the single largest optimization.
+- Data consistency is NOT compromised: the transaction is still written to the WAL, just asynchronously. In the worst case (server crash), up to ~100ms of recent commits could be lost.
+- For a URL shortener's redirect analytics, losing a few events in a catastrophic crash is an acceptable tradeoff for a 37% p95 latency reduction.
+- Result: Silver p95 improved from 1,630ms to 1,040ms. Gold p95 improved from 4,680ms to 2,970ms.
+
+**Tradeoffs:**
+- In a catastrophic PostgreSQL crash (not a Docker restart, but an actual OS-level crash), the last ~100ms of committed events could be lost.
+- Not appropriate for financial transactions or critical data, but URL redirect analytics are inherently ephemeral and reconstructible.

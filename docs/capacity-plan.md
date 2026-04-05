@@ -126,10 +126,10 @@ Adding instances beyond 3 on a 1-vCPU machine yields no improvement because CPU 
 |---|---|---|
 | Monthly cost | s-1vcpu-1gb droplet | $6 |
 | Seconds in a month | 30 x 24 x 3600 | 2,592,000 |
-| Observed throughput | 158 req/s sustained | -- |
-| Max requests/month (sustained load) | 158 x 2,592,000 | 409,536,000 |
-| Cost per million requests | $6 / 409.54 | **$0.015** |
-| Cost per request | $6 / 409,536,000 | **$0.000000015** |
+| Observed throughput | 217 req/s sustained | -- |
+| Max requests/month (sustained load) | 217 x 2,592,000 | 562,464,000 |
+| Cost per million requests | $6 / 562.46 | **$0.011** |
+| Cost per request | $6 / 562,464,000 | **$0.000000011** |
 
 At realistic (non-continuous) traffic patterns:
 
@@ -138,9 +138,9 @@ At realistic (non-continuous) traffic patterns:
 | Low (1 req/s avg) | 2.6M | $6 | $2.31 |
 | Medium (10 req/s avg) | 26M | $6 | $0.23 |
 | High (100 req/s sustained) | 259M | $6 | $0.02 |
-| Peak (158 req/s saturated) | 410M | $6 | $0.015 |
+| Peak (217 req/s saturated) | 562M | $6 | $0.011 |
 
-The application delivers exceptional cost efficiency. At $0.015 per million requests on a $6/mo droplet, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
+The application delivers exceptional cost efficiency. At $0.011 per million requests on a $6/mo droplet, it is orders of magnitude cheaper than managed URL shortening services (Bitly: $29/mo for 1,500 links/month).
 
 ---
 
