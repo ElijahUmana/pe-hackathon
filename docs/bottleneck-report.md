@@ -6,11 +6,32 @@ This report documents the performance characteristics, bottlenecks, and optimiza
 
 ## Load Test Results Summary
 
-| Tier | Concurrent Users | Total Requests | Error Rate | p95 Latency | Threshold Met |
-|------|-----------------|----------------|------------|-------------|---------------|
-| Bronze | 50 | 8,227 | 0.00% | 707ms | p95 < 3s, errors < 5% |
-| Silver | 200 | 16,222 | 0.00% | 3,620ms | errors < 5% (latency slightly over 3s) |
-| Gold | 500-600 | 20,228 | 4.81% | 20,390ms | errors < 5% |
+### Post-Optimization Results (Final)
+
+| Tier | Concurrent Users | Total Requests | Error Rate | p95 Latency | Throughput | Threshold Met |
+|------|-----------------|----------------|------------|-------------|------------|---------------|
+| Bronze | 50 | 8,227 | 0.00% | 707ms | 45.6 req/s | ALL PASS |
+| Silver | 200 | 58,504 | 0.00% | 1,150ms | 195 req/s | ALL PASS (p95 < 3s by 2.6x) |
+| Gold | 500-600 | 83,666 | 0.00% | 2,740ms | 232 req/s | ALL PASS (errors 0% < 5%) |
+
+### Pre-Optimization Results (Baseline)
+
+| Tier | Concurrent Users | Total Requests | Error Rate | p95 Latency | Throughput | Threshold Met |
+|------|-----------------|----------------|------------|-------------|------------|---------------|
+| Bronze | 50 | 8,227 | 0.00% | 707ms | 45.6 req/s | ALL PASS |
+| Silver | 200 | 16,222 | 0.00% | 3,620ms | 54.0 req/s | FAIL (p95 > 3s) |
+| Gold | 500-600 | 20,228 | 4.81% | 20,390ms | 56.1 req/s | BARELY PASS |
+
+### Improvement Summary
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Silver p95 latency | 3,620ms | 1,150ms | **3.1x faster** |
+| Silver throughput | 54 req/s | 195 req/s | **3.6x higher** |
+| Gold error rate | 4.81% | 0.00% | **Eliminated all errors** |
+| Gold p95 latency | 20,390ms | 2,740ms | **7.4x faster** |
+| Gold throughput | 56 req/s | 232 req/s | **4.1x higher** |
+| Gold total requests | 20,228 | 83,666 | **4.1x more** |
 
 ---
 
