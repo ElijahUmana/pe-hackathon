@@ -7,7 +7,7 @@
 
   const data = [
     // RELIABILITY BRONZE (3)
-    { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/screenshots/health_endpoint.txt", note: 'GET /health returns {"status":"ok","database":"connected"}. Live at http://64.23.250.234/health' },
+    { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/screenshots/health_endpoint.txt", note: 'GET /health returns {"status":"ok","database":"connected"}. Live at http://146.190.158.231/health' },
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/screenshots/pytest_results.txt", note: "184 tests passing across 12 test files covering models, routes, validators, edge cases, and full API contract" },
     { url: "https://github.com/ElijahUmana/pe-hackathon/actions", note: "GitHub Actions CI runs on every push to every branch. Lints with ruff, runs pytest with coverage gate at 70%" },
     // RELIABILITY SILVER (3)
@@ -47,14 +47,14 @@
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/scalability/k6_gold_500users.txt", note: "0.00% error rate at 500-600 concurrent users. 100% of 98,984 checks passed" },
     // INCIDENT RESPONSE BRONZE (3)
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/incident-response/json_logs.txt", note: 'python-json-logger output with timestamp, level, message, method, path, status, remote_addr, user_agent fields' },
-    { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/incident-response/metrics_endpoint.txt", note: "Prometheus: http_requests_total, latency histograms, cache_hits, redirects_total, active_urls. Live at http://64.23.250.234/metrics" },
+    { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/incident-response/metrics_endpoint.txt", note: "Prometheus: http_requests_total, latency histograms, cache_hits, redirects_total, active_urls. Live at http://146.190.158.231/metrics" },
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/evidence/incident-response/json_logs.txt", note: "Logs viewable via docker compose logs without SSH. Also aggregated in Grafana via Prometheus metrics" },
     // INCIDENT RESPONSE SILVER (3)
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/prometheus/alert_rules.yml", note: "10 alert rules: ServiceDown(15s), HighErrorRate(>10%), HighLatency(p95>2s), HighMemory, HostCPU, HostMemory, DiskLow/Critical, NetworkErrors, NodeExporterDown" },
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/docs/alert-pipeline.md", note: "Prometheus -> Alertmanager -> Webhook Receiver -> Discord. Real ServiceDown alerts delivered to Discord channel" },
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/docs/alert-pipeline.md", note: "ServiceDown fires after 15s, Alertmanager group_wait 5s. Total: ~25 seconds, well under 5-minute requirement" },
     // INCIDENT RESPONSE GOLD (3)
-    { url: "http://64.23.250.234:3000", note: "Grafana: 8 panels - Request Rate, Error Rate, Latency p50/p95/p99, Active URLs, URLs Created, Redirects, Cache Hit Ratio, Instance Health. Login: admin/hackathon2026" },
+    { url: "http://146.190.158.231:3000", note: "Grafana: 8 panels - Request Rate, Error Rate, Latency p50/p95/p99, Active URLs, URLs Created, Redirects, Cache Hit Ratio, Instance Health. Login: admin/hackathon2026" },
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/docs/runbook.md", note: "576-line runbook: step-by-step for each alert, PromQL queries, recovery checklists, communication protocol, post-incident template" },
     { url: "https://github.com/ElijahUmana/pe-hackathon/blob/main/docs/incident-diagnosis.md", note: "537-line Sherlock Mode: Flask instance failure diagnosed via Grafana panels, PromQL, structured logs. Full timeline detection to resolution" },
   ];

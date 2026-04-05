@@ -4,13 +4,13 @@
 
 | Service | URL | Credentials |
 |---------|-----|-------------|
-| Application | http://64.23.250.234 | - |
-| Health Check | http://64.23.250.234/health | - |
-| Metrics (Prometheus format) | http://64.23.250.234/metrics | - |
-| Grafana Dashboard | http://64.23.250.234:3000 | admin / hackathon2026 |
-| Prometheus | http://64.23.250.234:9090 | - |
-| Alertmanager | http://64.23.250.234:9093 | - |
-| Webhook Receiver | http://64.23.250.234:9094 | - |
+| Application | http://146.190.158.231 | - |
+| Health Check | http://146.190.158.231/health | - |
+| Metrics (Prometheus format) | http://146.190.158.231/metrics | - |
+| Grafana Dashboard | http://146.190.158.231:3000 | admin / hackathon2026 |
+| Prometheus | http://146.190.158.231:9090 | - |
+| Alertmanager | http://146.190.158.231:9093 | - |
+| Webhook Receiver | http://146.190.158.231:9094 | - |
 | GitHub Repository | https://github.com/ElijahUmana/pe-hackathon | - |
 | CI/CD (GitHub Actions) | https://github.com/ElijahUmana/pe-hackathon/actions | - |
 
