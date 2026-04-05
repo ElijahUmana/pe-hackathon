@@ -136,6 +136,13 @@ def seed_all(data_dir=None):
     load_users(users_csv)
     load_urls(urls_csv)
     load_events(events_csv)
+
+    # Reset PostgreSQL sequences after bulk insert with explicit IDs
+    print("Resetting sequences...")
+    db.execute_sql("SELECT setval('users_id_seq', (SELECT MAX(id) FROM users))")
+    db.execute_sql("SELECT setval('urls_id_seq', (SELECT MAX(id) FROM urls))")
+    db.execute_sql("SELECT setval('events_id_seq', (SELECT MAX(id) FROM events))")
+
     print("Seed complete!")
 
 
