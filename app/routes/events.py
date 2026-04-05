@@ -84,6 +84,8 @@ def create_event():
             return jsonify({"error": "User not found"}), 404
 
     details = data.get("details")
+    if details is not None and not isinstance(details, dict):
+        return jsonify({"error": "details must be a JSON object"}), 400
     details_str = json.dumps(details) if details is not None else None
 
     event = Event.create(
