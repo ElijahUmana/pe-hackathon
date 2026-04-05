@@ -17,7 +17,7 @@ DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 os.makedirs(EVIDENCE_DIR, exist_ok=True)
 
 
-GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://146.190.158.231:3000")
+GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://localhost:3000")
 
 SEVERITY_CONFIG = {
     "critical": {"color": 0xFF0000, "emoji": "\U0001f6a8"},

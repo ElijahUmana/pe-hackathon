@@ -294,15 +294,18 @@ def redirect_short_url(short_code):
         user_id = cache_data.get("user_id")
 
         # Log redirect event (Hint 2: Unseen Observer) — insert() skips model instantiation
-        now = datetime.datetime.utcnow()
-        details = json.dumps({
-            "ip": request.remote_addr,
-            "user_agent": request.headers.get("User-Agent", ""),
-        })
-        Event.insert(
-            url_id=url_id, user_id=user_id, event_type="redirect",
-            timestamp=now, details=details,
-        ).execute()
+        try:
+            now = datetime.datetime.utcnow()
+            details = json.dumps({
+                "ip": request.remote_addr,
+                "user_agent": request.headers.get("User-Agent", ""),
+            })
+            Event.insert(
+                url_id=url_id, user_id=user_id, event_type="redirect",
+                timestamp=now, details=details,
+            ).execute()
+        except Exception as e:
+            logger.warning("Failed to log redirect event (cache hit): %s", e)
 
         response = redirect(original_url, code=302)
         response.headers["X-Cache"] = "HIT"
@@ -343,15 +346,18 @@ def redirect_short_url(short_code):
     REDIRECTS_TOTAL.inc()
 
     # Log redirect event BEFORE returning (Hint 2: Unseen Observer)
-    now = datetime.datetime.utcnow()
-    details = json.dumps({
-        "ip": request.remote_addr,
-        "user_agent": request.headers.get("User-Agent", ""),
-    })
-    Event.insert(
-        url_id=url_id, user_id=user_id, event_type="redirect",
-        timestamp=now, details=details,
-    ).execute()
+    try:
+        now = datetime.datetime.utcnow()
+        details = json.dumps({
+            "ip": request.remote_addr,
+            "user_agent": request.headers.get("User-Agent", ""),
+        })
+        Event.insert(
+            url_id=url_id, user_id=user_id, event_type="redirect",
+            timestamp=now, details=details,
+        ).execute()
+    except Exception as e:
+        logger.warning("Failed to log redirect event (cache miss): %s", e)
 
     response = redirect(original_url, code=302)
     response.headers["X-Cache"] = "MISS"

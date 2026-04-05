@@ -172,6 +172,7 @@ services:
       - "9094:9094"
     environment:
       DISCORD_WEBHOOK_URL: ${DISCORD_WEBHOOK_URL:-}
+      GRAFANA_URL: ${GRAFANA_URL:-http://grafana:3000}
     volumes:
       - ./evidence:/app/evidence
     restart: unless-stopped

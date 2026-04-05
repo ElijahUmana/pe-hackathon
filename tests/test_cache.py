@@ -239,3 +239,49 @@ class TestRedisFailureGraceDegradation:
 
         assert resp.status_code == 302
         assert "no-redis.example.com" in resp.headers["Location"]
+
+
+class TestWarmCache:
+    """Tests for the warm_cache() pre-warming function."""
+
+    def test_warm_cache_no_crash_when_redis_unavailable(self, app):
+        """warm_cache() should not raise when Redis is unavailable."""
+        with patch("app.cache.get_redis", return_value=None):
+            from app.cache import warm_cache
+
+            # Should return silently without error
+            warm_cache(app)
+
+    def test_warm_cache_loads_active_urls(self, app, client):
+        """warm_cache() pipelines active URLs into Redis."""
+        # Create URLs so there is data to warm
+        client.post("/urls", json={"url": "https://warm1.example.com"})
+        client.post("/urls", json={"url": "https://warm2.example.com"})
+
+        mock_redis = MagicMock()
+        mock_pipe = MagicMock()
+        mock_redis.pipeline.return_value = mock_pipe
+
+        with patch("app.cache.get_redis", return_value=mock_redis):
+            from app.cache import warm_cache
+
+            warm_cache(app)
+
+        # Pipeline should have been executed with setex calls
+        assert mock_pipe.setex.call_count >= 2
+        mock_pipe.execute.assert_called_once()
+
+    def test_warm_cache_no_crash_when_pipeline_fails(self, app, client):
+        """warm_cache() logs a warning and does not raise if pipeline fails."""
+        client.post("/urls", json={"url": "https://warm-fail.example.com"})
+
+        mock_redis = MagicMock()
+        mock_pipe = MagicMock()
+        mock_redis.pipeline.return_value = mock_pipe
+        mock_pipe.execute.side_effect = Exception("Redis pipeline error")
+
+        with patch("app.cache.get_redis", return_value=mock_redis):
+            from app.cache import warm_cache
+
+            # Should not raise
+            warm_cache(app)
