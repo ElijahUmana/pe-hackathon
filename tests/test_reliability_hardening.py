@@ -335,8 +335,8 @@ class TestSoftDeleteBehavior:
         resp = client.get(f"/{short_code}")
         assert resp.status_code == 302
 
-    def test_double_delete_url_both_return_204(self, client):
-        """Deleting a URL twice should succeed both times (idempotent soft-delete)."""
+    def test_double_delete_url_second_returns_404(self, client):
+        """Deleting an already-deactivated URL should return 404."""
         create_resp = _create_url(client, url="https://double-del.example.com")
         url_id = create_resp.get_json()["id"]
 
@@ -344,7 +344,7 @@ class TestSoftDeleteBehavior:
         assert resp1.status_code == 204
 
         resp2 = client.delete(f"/urls/{url_id}")
-        assert resp2.status_code == 204
+        assert resp2.status_code == 404
 
     def test_url_stats_accessible_after_soft_delete(self, client):
         """Stats endpoint should work for soft-deleted URLs."""

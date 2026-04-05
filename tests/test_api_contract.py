@@ -50,16 +50,13 @@ class TestBulkUploadEdgeCases:
         assert resp.status_code == 201
         assert resp.get_json()["imported"] == 0
 
-    def test_csv_with_wrong_columns_imports_with_empty_defaults(self, client):
-        """A CSV missing username/email columns uses empty defaults from .get().
-        The bulk endpoint doesn't validate fields like the JSON endpoint does,
-        so rows may be imported with empty values (first succeeds, second
-        duplicate-empty hits IntegrityError and is skipped)."""
+    def test_csv_with_wrong_columns_imports_zero(self, client):
+        """A CSV missing username/email columns should skip all rows since
+        username and email are required fields."""
         csv = "first_name,last_name\nJohn,Doe\nJane,Smith\n"
         resp = _upload_csv(client, csv)
         assert resp.status_code == 201
-        # First row imports with empty username/email, second hits duplicate
-        assert resp.get_json()["imported"] >= 1
+        assert resp.get_json()["imported"] == 0
 
     def test_csv_with_duplicate_users(self, client):
         """Duplicate users in a CSV should be skipped (IntegrityError handled)."""
@@ -324,15 +321,14 @@ class TestMiscContractEdgeCases:
         assert resp.status_code == 200
         assert resp.get_json()["is_active"] is False
 
-    def test_double_delete_url_returns_204_then_keeps_inactive(self, client):
-        """Deleting an already-deleted URL should still return success."""
+    def test_double_delete_url_returns_204_then_404(self, client):
+        """Deleting an already-deleted URL should return 404."""
         create_resp = _create_url(client, url="https://double-del.example.com")
         url_id = create_resp.get_json()["id"]
         resp1 = client.delete(f"/urls/{url_id}")
         assert resp1.status_code == 204
-        # Second delete should also work (it's already inactive, but still exists)
         resp2 = client.delete(f"/urls/{url_id}")
-        assert resp2.status_code == 204
+        assert resp2.status_code == 404
 
     def test_list_urls_pagination(self, client):
         """Pagination parameters should limit results."""
@@ -356,12 +352,12 @@ class TestMiscContractEdgeCases:
         assert data[0]["user_id"] == user_id
 
     def test_create_url_with_user_id_zero_rejected(self, client):
-        """user_id=0 should not find a valid user."""
+        """user_id=0 should be rejected as invalid."""
         resp = client.post(
             "/urls",
             json={"url": "https://zero-user.example.com", "user_id": 0},
         )
-        assert resp.status_code == 404
+        assert resp.status_code == 400
 
     def test_url_stats_includes_url_data(self, client):
         """Stats endpoint should include the URL metadata alongside the count."""

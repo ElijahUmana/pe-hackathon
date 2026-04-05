@@ -83,10 +83,16 @@ def create_url():
     user_id = data.get("user_id")
     user = None
     if user_id is not None:
+        if isinstance(user_id, bool) or not isinstance(user_id, (int, float)):
+            return jsonify({"error": "user_id must be an integer"}), 400
+        if isinstance(user_id, float) and user_id != int(user_id):
+            return jsonify({"error": "user_id must be an integer"}), 400
         try:
             user_id = int(user_id)
         except (TypeError, ValueError):
             return jsonify({"error": "user_id must be an integer"}), 400
+        if user_id < 1:
+            return jsonify({"error": "user_id must be a positive integer"}), 400
         try:
             user = User.get_by_id(user_id)
         except User.DoesNotExist:
@@ -97,6 +103,8 @@ def create_url():
         title = title.strip() or None
     else:
         title = None
+    if title and len(title) > 255:
+        return jsonify({"error": "title must be 255 characters or fewer"}), 400
 
     # Oracle Hint 1 (Twin's Paradox): random unique short code
     max_retries = 10
@@ -164,8 +172,11 @@ def update_url(url_id):
         changes.append(("original_url", new_url.strip()))
 
     if "title" in data:
-        url_obj.title = data["title"] if data["title"] else None
-        changes.append(("title", data["title"]))
+        new_title = data["title"]
+        if isinstance(new_title, str) and len(new_title.strip()) > 255:
+            return jsonify({"error": "title must be 255 characters or fewer"}), 400
+        url_obj.title = new_title if new_title else None
+        changes.append(("title", new_title))
 
     if "is_active" in data:
         if not isinstance(data["is_active"], bool):
@@ -201,6 +212,9 @@ def delete_url(url_id):
     try:
         url_obj = URL.get_by_id(url_id)
     except URL.DoesNotExist:
+        return jsonify({"error": "URL not found"}), 404
+
+    if not url_obj.is_active:
         return jsonify({"error": "URL not found"}), 404
 
     # Soft delete (Oracle Hint 4: Slumbering Guide)

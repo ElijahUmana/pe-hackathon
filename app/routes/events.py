@@ -61,11 +61,18 @@ def create_event():
     url_id = data.get("url_id")
     if url_id is None:
         return jsonify({"error": "url_id is required"}), 400
+    if isinstance(url_id, bool) or not isinstance(url_id, (int, float)):
+        return jsonify({"error": "url_id must be an integer"}), 400
+    if isinstance(url_id, float) and url_id != int(url_id):
+        return jsonify({"error": "url_id must be an integer"}), 400
     try:
         url_id = int(url_id)
-        URL.get_by_id(url_id)
     except (TypeError, ValueError):
         return jsonify({"error": "url_id must be an integer"}), 400
+    if url_id < 1:
+        return jsonify({"error": "url_id must be a positive integer"}), 400
+    try:
+        URL.get_by_id(url_id)
     except URL.DoesNotExist:
         return jsonify({"error": "URL not found"}), 404
 
@@ -75,11 +82,18 @@ def create_event():
 
     user_id = data.get("user_id")
     if user_id is not None:
+        if isinstance(user_id, bool) or not isinstance(user_id, (int, float)):
+            return jsonify({"error": "user_id must be an integer"}), 400
+        if isinstance(user_id, float) and user_id != int(user_id):
+            return jsonify({"error": "user_id must be an integer"}), 400
         try:
             user_id = int(user_id)
-            User.get_by_id(user_id)
         except (TypeError, ValueError):
             return jsonify({"error": "user_id must be an integer"}), 400
+        if user_id < 1:
+            return jsonify({"error": "user_id must be a positive integer"}), 400
+        try:
+            User.get_by_id(user_id)
         except User.DoesNotExist:
             return jsonify({"error": "User not found"}), 404
 

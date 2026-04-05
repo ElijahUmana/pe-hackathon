@@ -29,11 +29,15 @@ def bulk_create_users():
 
     count = 0
     for row in reader:
+        username = row.get("username", "").strip()
+        email = row.get("email", "").strip()
+        if not username or not email or len(username) > 255 or len(email) > 255:
+            continue
         try:
             with db.atomic():
                 User.create(
-                    username=row.get("username", "").strip(),
-                    email=row.get("email", "").strip(),
+                    username=username,
+                    email=email,
                     created_at=row.get("created_at", datetime.datetime.utcnow()),
                 )
                 count += 1
