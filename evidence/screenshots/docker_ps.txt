@@ -1,0 +1,12 @@
+NAME                              STATUS                   PORTS
+pe-hackathon-alertmanager-1       Up 7 minutes             0.0.0.0:9093->9093/tcp, [::]:9093->9093/tcp
+pe-hackathon-app1-1               Up 7 minutes (healthy)   5000/tcp
+pe-hackathon-app2-1               Up 7 minutes (healthy)   5000/tcp
+pe-hackathon-app3-1               Up 7 minutes (healthy)   5000/tcp
+pe-hackathon-db-1                 Up 7 minutes (healthy)   0.0.0.0:5432->5432/tcp, [::]:5432->5432/tcp
+pe-hackathon-grafana-1            Up 7 minutes             0.0.0.0:3000->3000/tcp, [::]:3000->3000/tcp
+pe-hackathon-nginx-1              Up 6 minutes             0.0.0.0:80->80/tcp, [::]:80->80/tcp
+pe-hackathon-node-exporter-1      Up 7 minutes             9100/tcp
+pe-hackathon-prometheus-1         Up 7 minutes             0.0.0.0:9090->9090/tcp, [::]:9090->9090/tcp
+pe-hackathon-redis-1              Up 7 minutes (healthy)   0.0.0.0:6379->6379/tcp, [::]:6379->6379/tcp
+pe-hackathon-webhook-receiver-1   Up 6 minutes             0.0.0.0:9094->9094/tcp, [::]:9094->9094/tcp

@@ -1,0 +1,29 @@
+=== Missing URL field ===
+{
+  "error": "url is required"
+}
+
+=== Invalid URL format ===
+{
+  "error": "A valid HTTP or HTTPS URL is required"
+}
+
+=== Non-JSON body ===
+{
+  "error": "Content-Type must be application/json"
+}
+
+=== Nonexistent resource ===
+{
+  "error": "URL not found"
+}
+
+=== Bad user_id ===
+{
+  "error": "User not found"
+}
+
+=== Method not allowed ===
+{
+  "error": "Method not allowed"
+}

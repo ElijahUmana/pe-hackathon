@@ -1,0 +1,22 @@
+=== Create URL ===
+{
+  "created_at": "Sun, 05 Apr 2026 04:31:37 GMT",
+  "id": 2592,
+  "is_active": true,
+  "original_url": "https://example.com/cache-test-2",
+  "short_code": "Rg5g1k",
+  "title": null,
+  "updated_at": "Sun, 05 Apr 2026 04:31:37 GMT",
+  "user_id": null
+}
+
+
+=== First redirect (MISS) ===
+HTTP/1.1 302 FOUND
+Location: https://example.com/cache-test
+X-Cache: MISS
+
+=== Second redirect (HIT) ===
+HTTP/1.1 302 FOUND
+Location: https://example.com/cache-test
+X-Cache: HIT

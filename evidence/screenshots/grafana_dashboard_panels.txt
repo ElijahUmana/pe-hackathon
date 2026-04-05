@@ -1,0 +1,8 @@
+Request Rate (timeseries)
+Error Rate (timeseries)
+Request Latency p50 / p95 / p99 (timeseries)
+Active URLs (stat)
+URLs Created (timeseries)
+Redirects (timeseries)
+Cache Hit Ratio (timeseries)
+Instance Health (stat)

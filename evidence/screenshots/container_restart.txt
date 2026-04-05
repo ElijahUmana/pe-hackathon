@@ -1,0 +1,48 @@
+=== Before kill ===
+NAME                              STATUS
+pe-hackathon-alertmanager-1       Up 7 minutes
+pe-hackathon-app1-1               Up 7 minutes (healthy)
+pe-hackathon-app2-1               Up 7 minutes (healthy)
+pe-hackathon-app3-1               Up 7 minutes (healthy)
+pe-hackathon-db-1                 Up 7 minutes (healthy)
+pe-hackathon-grafana-1            Up 7 minutes
+pe-hackathon-nginx-1              Up 6 minutes
+pe-hackathon-node-exporter-1      Up 7 minutes
+pe-hackathon-prometheus-1         Up 7 minutes
+pe-hackathon-redis-1              Up 7 minutes (healthy)
+pe-hackathon-webhook-receiver-1   Up 7 minutes
+=== Killing app2 ===
+ Container pe-hackathon-app2-1 Killing 
+ Container pe-hackathon-app2-1 Killed 
+=== Immediately after kill ===
+NAME                              STATUS
+pe-hackathon-alertmanager-1       Up 7 minutes
+pe-hackathon-app1-1               Up 7 minutes (healthy)
+pe-hackathon-app3-1               Up 7 minutes (healthy)
+pe-hackathon-db-1                 Up 7 minutes (healthy)
+pe-hackathon-grafana-1            Up 7 minutes
+pe-hackathon-nginx-1              Up 6 minutes
+pe-hackathon-node-exporter-1      Up 7 minutes
+pe-hackathon-prometheus-1         Up 7 minutes
+pe-hackathon-redis-1              Up 7 minutes (healthy)
+pe-hackathon-webhook-receiver-1   Up 7 minutes
+=== Health check (should still work) ===
+{
+  "database": "connected",
+  "status": "ok"
+}
+
+=== Waiting for auto-restart ===
+NAME                              STATUS
+pe-hackathon-alertmanager-1       Up 8 minutes
+pe-hackathon-app1-1               Up 8 minutes (healthy)
+pe-hackathon-app3-1               Up 8 minutes (healthy)
+pe-hackathon-db-1                 Up 8 minutes (healthy)
+pe-hackathon-grafana-1            Up 8 minutes
+pe-hackathon-nginx-1              Up 7 minutes
+pe-hackathon-node-exporter-1      Up 8 minutes
+pe-hackathon-prometheus-1         Up 8 minutes
+pe-hackathon-redis-1              Up 8 minutes (healthy)
+pe-hackathon-webhook-receiver-1   Up 7 minutes
+=== Restart policy ===
+RestartPolicy: unless-stopped

@@ -1,0 +1,30 @@
+    ✓ redirect status is 302
+    ✓ create status is 201
+    ✓ health status is 200
+    ✓ list status is 200
+
+    CUSTOM
+    errors.........................: 0.00%  0 out of 5766
+    redirect_latency...............: avg=20.8183  min=4.200634 med=6.722053 max=3118.07812 p(90)=12.433631 p(95)=15.930898
+
+    HTTP
+    http_req_duration..............: avg=22.03ms  min=424.31µs med=7.44ms   max=3.11s      p(90)=19.41ms   p(95)=27.24ms  
+      { expected_response:true }...: avg=22.03ms  min=424.31µs med=7.44ms   max=3.11s      p(90)=19.41ms   p(95)=27.24ms  
+    http_req_failed................: 0.00%  0 out of 5777
+    http_reqs......................: 5777   90.715932/s
+
+    EXECUTION
+    iteration_duration.............: avg=522.51ms min=500.63ms med=508.37ms max=3.61s      p(90)=520.37ms  p(95)=528.2ms  
+    iterations.....................: 5766   90.5432/s
+    vus............................: 50     min=0         max=50
+    vus_max........................: 50     min=50        max=50
+
+    NETWORK
+    data_received..................: 6.1 MB 95 kB/s
+    data_sent......................: 505 kB 7.9 kB/s
+
+
+
+
+running (1m03.7s), 00/50 VUs, 5766 complete and 0 interrupted iterations
+default ✓ [ 100% ] 50 VUs  1m0s

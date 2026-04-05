@@ -1,0 +1,242 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.13.5, pytest-9.0.2, pluggy-1.6.0 -- /Users/elijahumana/pe-hackathon/.venv/bin/python
+cachedir: .pytest_cache
+rootdir: /Users/elijahumana/pe-hackathon
+configfile: pyproject.toml
+testpaths: tests
+plugins: cov-7.1.0, Faker-40.12.0
+collecting ... collected 149 items
+
+tests/test_cache.py::TestRedirectCacheHit::test_redirect_with_cache_hit_returns_302 PASSED [  0%]
+tests/test_cache.py::TestRedirectCacheHit::test_redirect_cache_hit_sets_x_cache_header PASSED [  1%]
+tests/test_cache.py::TestRedirectCacheHit::test_redirect_cache_hit_creates_event PASSED [  2%]
+tests/test_cache.py::TestRedirectCacheMiss::test_redirect_cache_miss_sets_x_cache_header PASSED [  2%]
+tests/test_cache.py::TestRedirectCacheMiss::test_redirect_cache_miss_writes_correct_data PASSED [  3%]
+tests/test_cache.py::TestCacheInvalidation::test_update_url_invalidates_cache PASSED [  4%]
+tests/test_cache.py::TestCacheInvalidation::test_delete_url_invalidates_cache PASSED [  4%]
+tests/test_cache.py::TestRedisFailureGraceDegradation::test_redirect_works_when_redis_get_raises PASSED [  5%]
+tests/test_cache.py::TestRedisFailureGraceDegradation::test_redirect_works_when_redis_setex_raises PASSED [  6%]
+tests/test_cache.py::TestRedisFailureGraceDegradation::test_update_works_when_redis_delete_raises PASSED [  6%]
+tests/test_cache.py::TestRedisFailureGraceDegradation::test_delete_works_when_redis_delete_raises PASSED [  7%]
+tests/test_cache.py::TestRedisFailureGraceDegradation::test_redirect_works_when_redis_unavailable PASSED [  8%]
+tests/test_edge_cases.py::test_twins_paradox_same_url_different_codes PASSED [  8%]
+tests/test_edge_cases.py::test_twins_paradox_different_ids PASSED        [  9%]
+tests/test_edge_cases.py::test_unseen_observer_redirect_creates_event PASSED [ 10%]
+tests/test_edge_cases.py::test_unseen_observer_multiple_redirects_multiple_events PASSED [ 10%]
+tests/test_edge_cases.py::test_unseen_observer_event_has_details PASSED  [ 11%]
+tests/test_edge_cases.py::test_unwitting_stranger_missing_url_field PASSED [ 12%]
+tests/test_edge_cases.py::test_unwitting_stranger_nonexistent_user_id PASSED [ 12%]
+tests/test_edge_cases.py::test_unwitting_stranger_missing_username_for_user PASSED [ 13%]
+tests/test_edge_cases.py::test_unwitting_stranger_missing_email_for_user PASSED [ 14%]
+tests/test_edge_cases.py::test_slumbering_guide_inactive_url_404 PASSED  [ 14%]
+tests/test_edge_cases.py::test_slumbering_guide_no_event_for_inactive PASSED [ 15%]
+tests/test_edge_cases.py::test_slumbering_guide_deactivate_via_update PASSED [ 16%]
+tests/test_edge_cases.py::test_deceitful_scroll_single_word_rejected PASSED [ 16%]
+tests/test_edge_cases.py::test_deceitful_scroll_no_scheme_rejected PASSED [ 17%]
+tests/test_edge_cases.py::test_deceitful_scroll_ftp_rejected PASSED      [ 18%]
+tests/test_edge_cases.py::test_deceitful_scroll_empty_rejected PASSED    [ 18%]
+tests/test_edge_cases.py::test_deceitful_scroll_whitespace_rejected PASSED [ 19%]
+tests/test_edge_cases.py::test_fractured_vessel_plain_text_body PASSED   [ 20%]
+tests/test_edge_cases.py::test_fractured_vessel_json_string_body PASSED  [ 20%]
+tests/test_edge_cases.py::test_fractured_vessel_json_array_body PASSED   [ 21%]
+tests/test_edge_cases.py::test_fractured_vessel_empty_body PASSED        [ 22%]
+tests/test_edge_cases.py::test_fractured_vessel_form_encoded_body PASSED [ 22%]
+tests/test_edge_cases.py::test_fractured_vessel_users_plain_text PASSED  [ 23%]
+tests/test_error_handlers.py::test_404_returns_json_for_unknown_route PASSED [ 24%]
+tests/test_error_handlers.py::test_405_returns_json_for_wrong_method PASSED [ 24%]
+tests/test_error_handlers.py::test_405_delete_on_list_endpoint PASSED    [ 25%]
+tests/test_events.py::test_list_events_empty PASSED                      [ 26%]
+tests/test_events.py::test_list_events_after_url_creation PASSED         [ 26%]
+tests/test_events.py::test_list_events_filter_by_type PASSED             [ 27%]
+tests/test_events.py::test_list_events_filter_nonexistent_type PASSED    [ 28%]
+tests/test_events.py::test_url_events_endpoint PASSED                    [ 28%]
+tests/test_events.py::test_url_events_nonexistent_url PASSED             [ 29%]
+tests/test_events.py::test_events_pagination PASSED                      [ 30%]
+tests/test_health.py::test_health_returns_200 PASSED                     [ 30%]
+tests/test_health.py::test_health_contains_database_key PASSED           [ 31%]
+tests/test_health.py::test_health_database_connected PASSED              [ 32%]
+tests/test_integration.py::test_full_flow_create_user_create_url_redirect_check_events PASSED [ 32%]
+tests/test_integration.py::test_create_url_delete_url_redirect_fails_no_new_event PASSED [ 33%]
+tests/test_integration.py::test_create_user_create_multiple_urls_list_all PASSED [ 34%]
+tests/test_integration.py::test_delete_user_then_create_url_without_user PASSED [ 34%]
+tests/test_integration.py::test_update_url_then_redirect_goes_to_new_destination PASSED [ 35%]
+tests/test_integration.py::test_global_events_list_captures_all_types PASSED [ 36%]
+tests/test_metrics.py::test_metrics_endpoint_returns_200 PASSED          [ 36%]
+tests/test_metrics.py::test_metrics_endpoint_returns_prometheus_content_type PASSED [ 37%]
+tests/test_metrics.py::test_metrics_contains_standard_counters PASSED    [ 38%]
+tests/test_metrics.py::test_metrics_contains_business_counters PASSED    [ 38%]
+tests/test_metrics.py::test_metrics_contains_active_urls_gauge PASSED    [ 39%]
+tests/test_short_code.py::test_default_length PASSED                     [ 40%]
+tests/test_short_code.py::test_custom_length PASSED                      [ 40%]
+tests/test_short_code.py::test_only_alphanumeric PASSED                  [ 41%]
+tests/test_short_code.py::test_different_codes_on_each_call PASSED       [ 42%]
+tests/test_short_code.py::test_length_one PASSED                         [ 42%]
+tests/test_urls.py::test_create_url_valid PASSED                         [ 43%]
+tests/test_urls.py::test_create_url_with_user PASSED                     [ 44%]
+tests/test_urls.py::test_create_url_with_title PASSED                    [ 44%]
+tests/test_urls.py::test_create_url_missing_url_field PASSED             [ 45%]
+tests/test_urls.py::test_create_url_empty_url PASSED                     [ 46%]
+tests/test_urls.py::test_create_url_invalid_format PASSED                [ 46%]
+tests/test_urls.py::test_create_url_ftp_rejected PASSED                  [ 47%]
+tests/test_urls.py::test_create_url_non_json_body PASSED                 [ 48%]
+tests/test_urls.py::test_create_url_plain_string_json PASSED             [ 48%]
+tests/test_urls.py::test_create_url_array_body PASSED                    [ 49%]
+tests/test_urls.py::test_create_url_nonexistent_user_id PASSED           [ 50%]
+tests/test_urls.py::test_create_url_invalid_user_id_type PASSED          [ 51%]
+tests/test_urls.py::test_create_same_url_twice_different_short_codes PASSED [ 51%]
+tests/test_urls.py::test_redirect_existing_active_url PASSED             [ 52%]
+tests/test_urls.py::test_redirect_nonexistent_short_code PASSED          [ 53%]
+tests/test_urls.py::test_redirect_creates_multiple_events PASSED         [ 53%]
+tests/test_urls.py::test_delete_url_soft_delete PASSED                   [ 54%]
+tests/test_urls.py::test_redirect_deleted_url_returns_404 PASSED         [ 55%]
+tests/test_urls.py::test_delete_nonexistent_url PASSED                   [ 55%]
+tests/test_urls.py::test_update_url_original PASSED                      [ 56%]
+tests/test_urls.py::test_update_url_title PASSED                         [ 57%]
+tests/test_urls.py::test_update_url_is_active PASSED                     [ 57%]
+tests/test_urls.py::test_update_url_invalid_url PASSED                   [ 58%]
+tests/test_urls.py::test_update_url_invalid_is_active PASSED             [ 59%]
+tests/test_urls.py::test_update_nonexistent_url PASSED                   [ 59%]
+tests/test_urls.py::test_update_url_non_json PASSED                      [ 60%]
+tests/test_urls.py::test_list_urls_empty PASSED                          [ 61%]
+tests/test_urls.py::test_list_urls_returns_created PASSED                [ 61%]
+tests/test_urls.py::test_get_url_by_id PASSED                            [ 62%]
+tests/test_urls.py::test_get_nonexistent_url PASSED                      [ 63%]
+tests/test_urls.py::test_url_stats_no_redirects PASSED                   [ 63%]
+tests/test_urls.py::test_url_stats_with_redirects PASSED                 [ 64%]
+tests/test_urls.py::test_url_stats_nonexistent PASSED                    [ 65%]
+tests/test_user_edge_cases.py::test_create_user_integrity_error_generic_fallback PASSED [ 65%]
+tests/test_user_edge_cases.py::test_create_user_duplicate_email_returns_409 PASSED [ 66%]
+tests/test_user_edge_cases.py::test_create_user_non_dict_json_body PASSED [ 67%]
+tests/test_user_edge_cases.py::test_update_user_empty_email PASSED       [ 67%]
+tests/test_user_edge_cases.py::test_update_user_duplicate_username_returns_409 PASSED [ 68%]
+tests/test_users.py::test_list_users_empty PASSED                        [ 69%]
+tests/test_users.py::test_list_users_returns_created_users PASSED        [ 69%]
+tests/test_users.py::test_get_user_by_id PASSED                          [ 70%]
+tests/test_users.py::test_get_nonexistent_user_404 PASSED                [ 71%]
+tests/test_users.py::test_create_user_valid PASSED                       [ 71%]
+tests/test_users.py::test_create_user_missing_username PASSED            [ 72%]
+tests/test_users.py::test_create_user_missing_email PASSED               [ 73%]
+tests/test_users.py::test_create_user_empty_username PASSED              [ 73%]
+tests/test_users.py::test_create_user_empty_email PASSED                 [ 74%]
+tests/test_users.py::test_create_user_invalid_email PASSED               [ 75%]
+tests/test_users.py::test_create_user_duplicate_username PASSED          [ 75%]
+tests/test_users.py::test_create_user_duplicate_email PASSED             [ 76%]
+tests/test_users.py::test_create_user_non_json_body PASSED               [ 77%]
+tests/test_users.py::test_update_user PASSED                             [ 77%]
+tests/test_users.py::test_update_user_email PASSED                       [ 78%]
+tests/test_users.py::test_update_user_invalid_email PASSED               [ 79%]
+tests/test_users.py::test_update_nonexistent_user PASSED                 [ 79%]
+tests/test_users.py::test_update_user_empty_username PASSED              [ 80%]
+tests/test_users.py::test_update_user_non_json PASSED                    [ 81%]
+tests/test_users.py::test_delete_user PASSED                             [ 81%]
+tests/test_users.py::test_delete_nonexistent_user PASSED                 [ 82%]
+tests/test_validators.py::TestIsValidUrl::test_http_url PASSED           [ 83%]
+tests/test_validators.py::TestIsValidUrl::test_https_url PASSED          [ 83%]
+tests/test_validators.py::TestIsValidUrl::test_https_with_path PASSED    [ 84%]
+tests/test_validators.py::TestIsValidUrl::test_https_with_query PASSED   [ 85%]
+tests/test_validators.py::TestIsValidUrl::test_https_with_port PASSED    [ 85%]
+tests/test_validators.py::TestIsValidUrl::test_no_scheme PASSED          [ 86%]
+tests/test_validators.py::TestIsValidUrl::test_ftp_scheme PASSED         [ 87%]
+tests/test_validators.py::TestIsValidUrl::test_single_word PASSED        [ 87%]
+tests/test_validators.py::TestIsValidUrl::test_empty_string PASSED       [ 88%]
+tests/test_validators.py::TestIsValidUrl::test_none PASSED               [ 89%]
+tests/test_validators.py::TestIsValidUrl::test_whitespace_only PASSED    [ 89%]
+tests/test_validators.py::TestIsValidUrl::test_integer_input PASSED      [ 90%]
+tests/test_validators.py::TestIsValidUrl::test_missing_netloc PASSED     [ 91%]
+tests/test_validators.py::TestIsValidUrl::test_scheme_only PASSED        [ 91%]
+tests/test_validators.py::TestIsValidUrl::test_javascript_scheme PASSED  [ 92%]
+tests/test_validators.py::TestValidateEmail::test_valid_email PASSED     [ 93%]
+tests/test_validators.py::TestValidateEmail::test_valid_email_subdomain PASSED [ 93%]
+tests/test_validators.py::TestValidateEmail::test_missing_at PASSED      [ 94%]
+tests/test_validators.py::TestValidateEmail::test_missing_domain PASSED  [ 95%]
+tests/test_validators.py::TestValidateEmail::test_missing_local PASSED   [ 95%]
+tests/test_validators.py::TestValidateEmail::test_no_dot_in_domain PASSED [ 96%]
+tests/test_validators.py::TestValidateEmail::test_empty_string PASSED    [ 97%]
+tests/test_validators.py::TestValidateEmail::test_none PASSED            [ 97%]
+tests/test_validators.py::TestValidateEmail::test_whitespace PASSED      [ 98%]
+tests/test_validators.py::TestValidateEmail::test_multiple_at PASSED     [ 99%]
+tests/test_validators.py::TestValidateEmail::test_integer PASSED         [100%]
+
+=============================== warnings summary ===============================
+tests/test_cache.py: 12 warnings
+tests/test_edge_cases.py: 10 warnings
+tests/test_events.py: 7 warnings
+tests/test_integration.py: 8 warnings
+tests/test_metrics.py: 1 warning
+tests/test_urls.py: 20 warnings
+  /Users/elijahumana/pe-hackathon/app/routes/urls.py:99: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=datetime.datetime.utcnow(),
+
+tests/test_cache.py: 12 warnings
+tests/test_edge_cases.py: 10 warnings
+tests/test_events.py: 7 warnings
+tests/test_integration.py: 8 warnings
+tests/test_metrics.py: 1 warning
+tests/test_urls.py: 20 warnings
+  /Users/elijahumana/pe-hackathon/app/routes/urls.py:100: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    updated_at=datetime.datetime.utcnow(),
+
+tests/test_cache.py: 48 warnings
+tests/test_edge_cases.py: 40 warnings
+tests/test_events.py: 22 warnings
+tests/test_integration.py: 33 warnings
+tests/test_metrics.py: 3 warnings
+tests/test_urls.py: 72 warnings
+tests/test_user_edge_cases.py: 7 warnings
+tests/test_users.py: 14 warnings
+  /Users/elijahumana/pe-hackathon/.venv/lib/python3.13/site-packages/peewee.py:6632: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    dd[field_name] = default()
+
+tests/test_cache.py: 16 warnings
+tests/test_edge_cases.py: 13 warnings
+tests/test_events.py: 7 warnings
+tests/test_integration.py: 11 warnings
+tests/test_metrics.py: 1 warning
+tests/test_urls.py: 25 warnings
+  /Users/elijahumana/pe-hackathon/app/models/url.py:34: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    self.updated_at = datetime.datetime.utcnow()
+
+tests/test_cache.py::TestRedirectCacheHit::test_redirect_with_cache_hit_returns_302
+tests/test_cache.py::TestRedirectCacheHit::test_redirect_cache_hit_sets_x_cache_header
+tests/test_cache.py::TestRedirectCacheHit::test_redirect_cache_hit_creates_event
+  /Users/elijahumana/pe-hackathon/app/routes/urls.py:269: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.datetime.utcnow(),
+
+tests/test_cache.py: 5 warnings
+tests/test_edge_cases.py: 7 warnings
+tests/test_events.py: 1 warning
+tests/test_integration.py: 3 warnings
+tests/test_urls.py: 6 warnings
+  /Users/elijahumana/pe-hackathon/app/routes/urls.py:319: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.datetime.utcnow(),
+
+tests/test_cache.py::TestCacheInvalidation::test_update_url_invalidates_cache
+tests/test_cache.py::TestRedisFailureGraceDegradation::test_update_works_when_redis_delete_raises
+tests/test_edge_cases.py::test_slumbering_guide_deactivate_via_update
+tests/test_integration.py::test_update_url_then_redirect_goes_to_new_destination
+tests/test_urls.py::test_update_url_original
+tests/test_urls.py::test_update_url_title
+tests/test_urls.py::test_update_url_is_active
+  /Users/elijahumana/pe-hackathon/app/routes/urls.py:171: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.datetime.utcnow(),
+
+tests/test_cache.py::TestCacheInvalidation::test_delete_url_invalidates_cache
+tests/test_cache.py::TestRedisFailureGraceDegradation::test_delete_works_when_redis_delete_raises
+tests/test_edge_cases.py::test_slumbering_guide_inactive_url_404
+tests/test_edge_cases.py::test_slumbering_guide_no_event_for_inactive
+tests/test_integration.py::test_create_url_delete_url_redirect_fails_no_new_event
+tests/test_integration.py::test_global_events_list_captures_all_types
+tests/test_urls.py::test_delete_url_soft_delete
+tests/test_urls.py::test_redirect_deleted_url_returns_404
+  /Users/elijahumana/pe-hackathon/app/routes/urls.py:201: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    timestamp=datetime.datetime.utcnow(),
+
+tests/test_integration.py: 3 warnings
+tests/test_urls.py: 1 warning
+tests/test_user_edge_cases.py: 7 warnings
+tests/test_users.py: 14 warnings
+  /Users/elijahumana/pe-hackathon/app/routes/users.py:59: DeprecationWarning: datetime.datetime.utcnow() is deprecated and scheduled for removal in a future version. Use timezone-aware objects to represent datetimes in UTC: datetime.datetime.now(datetime.UTC).
+    created_at=datetime.datetime.utcnow(),
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+====================== 149 passed, 493 warnings in 1.47s =======================
