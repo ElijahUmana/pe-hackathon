@@ -1,14 +1,18 @@
+import os
+import tempfile
+
 import pytest
 from peewee import SqliteDatabase
 
-from app.database import db as db_proxy
+_DB_FD, _DB_PATH = tempfile.mkstemp(suffix=".db")
+os.close(_DB_FD)
 
+TEST_DB = SqliteDatabase(_DB_PATH, pragmas={"foreign_keys": 0})
 
 MODELS = []
 
 
 def _get_models():
-    """Lazily import models so the proxy is already initialized."""
     if not MODELS:
         from app.models.user import User
         from app.models.url import URL
@@ -18,56 +22,65 @@ def _get_models():
     return MODELS
 
 
+def _bind_proxy():
+    from app.database import db as db_proxy
+
+    db_proxy.initialize(TEST_DB)
+
+
 @pytest.fixture(scope="session")
 def app():
-    """Create a Flask test app backed by an in-memory SQLite database."""
-    # Initialize the DatabaseProxy with SQLite BEFORE creating the Flask app.
-    test_db = SqliteDatabase(":memory:")
-    db_proxy.initialize(test_db)
-
-    # Now import create_app.  Its init_db call will try to re-initialize with
-    # PostgreSQL, so we monkey-patch init_db to be a no-op for the test session.
     import app.database as db_module
 
-    _original_init_db = db_module.init_db
+    original = db_module.init_db
 
     def _test_init_db(flask_app):
-        """Skip PostgreSQL setup; just register the before_request / teardown hooks."""
+        _bind_proxy()
 
         @flask_app.before_request
         def _db_connect():
-            db_proxy.connect(reuse_if_open=True)
+            _bind_proxy()
+            TEST_DB.connect(reuse_if_open=True)
 
         @flask_app.teardown_appcontext
         def _db_close(exc):
-            if not db_proxy.is_closed():
-                db_proxy.close()
+            pass
 
     db_module.init_db = _test_init_db
+    _bind_proxy()
+    TEST_DB.connect(reuse_if_open=True)
 
     from app import create_app
 
     flask_app = create_app(testing=True)
+    db_module.init_db = original
+    _bind_proxy()
 
-    # Restore original init_db so it doesn't leak into non-test code.
-    db_module.init_db = _original_init_db
+    yield flask_app
 
-    return flask_app
+    if not TEST_DB.is_closed():
+        TEST_DB.close()
+    for p in [_DB_PATH, _DB_PATH + "-wal", _DB_PATH + "-shm", _DB_PATH + "-journal"]:
+        if os.path.exists(p):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
 
 
 @pytest.fixture(scope="session")
 def client(app):
-    """Flask test client."""
     return app.test_client()
 
 
 @pytest.fixture(autouse=True)
-def db_setup():
-    """Create all tables before each test and drop them after."""
+def db_setup(app):
+    _bind_proxy()
     models = _get_models()
-    db_proxy.connect(reuse_if_open=True)
-    db_proxy.create_tables(models)
+    if TEST_DB.is_closed():
+        TEST_DB.connect()
+    TEST_DB.drop_tables(models, safe=True)
+    TEST_DB.create_tables(models, safe=True)
     yield
-    db_proxy.drop_tables(models)
-    if not db_proxy.is_closed():
-        db_proxy.close()
+    TEST_DB.drop_tables(models, safe=True)
+    TEST_DB.create_tables(models, safe=True)
