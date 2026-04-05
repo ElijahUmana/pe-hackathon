@@ -17,8 +17,17 @@ DISCORD_WEBHOOK_URL = os.environ.get("DISCORD_WEBHOOK_URL", "")
 os.makedirs(EVIDENCE_DIR, exist_ok=True)
 
 
+GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://64.23.250.234:3000")
+
+SEVERITY_CONFIG = {
+    "critical": {"color": 0xFF0000, "emoji": "\U0001f6a8"},
+    "warning": {"color": 0xFFA500, "emoji": "\u26a0\ufe0f"},
+    "info": {"color": 0x3498DB, "emoji": "\u2139\ufe0f"},
+}
+
+
 def forward_to_discord(data):
-    """Forward alert payload to Discord via webhook embed."""
+    """Forward alert payload to Discord as rich embeds with Grafana links."""
     if not DISCORD_WEBHOOK_URL:
         return
     try:
@@ -28,20 +37,41 @@ def forward_to_discord(data):
             status = alert.get("status", "unknown").upper()
             severity = alert.get("labels", {}).get("severity", "unknown")
             instance = alert.get("labels", {}).get("instance", "unknown")
+            summary = alert.get("annotations", {}).get("summary", "")
             desc = alert.get("annotations", {}).get("description", "")
+            starts_at = alert.get("startsAt", "")
+            ends_at = alert.get("endsAt", "")
 
-            color = 0xFF0000 if status == "FIRING" else 0x00FF00
+            sev_cfg = SEVERITY_CONFIG.get(severity, SEVERITY_CONFIG["warning"])
+            color = 0x00FF00 if status == "RESOLVED" else sev_cfg["color"]
+            emoji = "\u2705" if status == "RESOLVED" else sev_cfg["emoji"]
+
+            title = "%s %s [%s]" % (emoji, name, status)
+
+            fields = [
+                {"name": "Severity", "value": severity, "inline": True},
+                {"name": "Instance", "value": instance, "inline": True},
+                {"name": "Status", "value": status, "inline": True},
+            ]
+            if starts_at:
+                fields.append({"name": "Started", "value": starts_at[:19], "inline": True})
+            if status == "RESOLVED" and ends_at:
+                fields.append({"name": "Resolved", "value": ends_at[:19], "inline": True})
+            fields.append({
+                "name": "Dashboard",
+                "value": "[Open Grafana](%s)" % GRAFANA_URL,
+                "inline": False,
+            })
+
+            body = summary if summary else desc
 
             payload = json.dumps({
                 "embeds": [{
-                    "title": "%s [%s]" % (name, status),
-                    "description": desc,
+                    "title": title,
+                    "description": body,
                     "color": color,
-                    "fields": [
-                        {"name": "Severity", "value": severity, "inline": True},
-                        {"name": "Instance", "value": instance, "inline": True},
-                        {"name": "Status", "value": status, "inline": True},
-                    ],
+                    "fields": fields,
+                    "footer": {"text": "PE Hackathon Alert System"},
                 }],
             }).encode()
 
