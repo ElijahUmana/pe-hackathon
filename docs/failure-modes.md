@@ -11,7 +11,7 @@ This document catalogs what happens when each system component fails, the impact
 When PostgreSQL becomes unavailable (crash, OOM, network partition):
 
 1. **All write operations fail immediately.** Creating URLs, creating users, updating records, and logging events all return 500 errors.
-2. **Redirect cache hits continue to work.** If the URL is in Redis, the redirect succeeds. However, the event INSERT for the redirect will fail -- the redirect still returns 302 to the client, but the analytics event is lost.
+2. **Redirect cache hits also fail.** Although the URL lookup is served from Redis, the redirect handler calls `Event.create()` (a database write) before returning the 302 response. With no try/except around the event creation, the database error propagates and the request returns 500 instead of 302. The cached URL data is not lost, but the redirect is not served.
 3. **Redirect cache misses fail.** The database lookup raises an exception, returning 500.
 4. **Health endpoint returns degraded:**
    ```json
@@ -23,8 +23,8 @@ When PostgreSQL becomes unavailable (crash, OOM, network partition):
 
 | Endpoint | Impact |
 |---|---|
-| `GET /:short_code` (cache hit) | Works (302), but event not recorded |
-| `GET /:short_code` (cache miss) | Fails (500) |
+| `GET /:short_code` (cache hit) | Fails (500) -- Event.create() is called before the 302 response, and the DB write raises an unhandled exception |
+| `GET /:short_code` (cache miss) | Fails (500) -- DB lookup raises exception |
 | `POST /urls` | Fails (500) |
 | `POST /users` | Fails (500) |
 | `GET /urls`, `GET /users` | Fails (500) |
@@ -32,7 +32,7 @@ When PostgreSQL becomes unavailable (crash, OOM, network partition):
 | `GET /health` | Returns 200 with `"status": "degraded"` |
 | `GET /metrics` | Works (Prometheus metrics are in-process) |
 
-**Data loss risk:** Redirect events that occur during the outage (on cached URLs) are permanently lost. No retry or buffering mechanism exists. URL and user data in PostgreSQL is durable (WAL + fsync) up to the moment of crash.
+**Data loss risk:** No redirect events are lost because no redirects succeed during the outage -- all redirect requests (including cache hits) return 500 due to the Event.create() DB write. URL and user data in PostgreSQL is durable (WAL + fsync) up to the moment of crash. To allow cached redirects to succeed during DB outage (at the cost of lost analytics events), the Event.create() call in the redirect handler would need to be wrapped in a try/except.
 
 ### Recovery Behavior
 
@@ -96,7 +96,7 @@ When one of the three Flask+Gunicorn instances crashes:
 2. **Nginx routes subsequent requests to the remaining healthy instances.** The failed instance is temporarily removed from the pool.
 3. **Overall capacity drops by approximately 33%** (from 36 handlers to 24).
 4. **Prometheus shows the instance as DOWN** (`up{instance="appN:5000"} == 0`).
-5. **ServiceDown alert fires** after 1 minute.
+5. **ServiceDown alert fires** after 15 seconds (`for: 15s`).
 
 ### Impact Assessment
 

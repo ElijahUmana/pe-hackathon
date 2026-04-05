@@ -407,11 +407,11 @@ No data was lost during the incident. The URL shortener uses PostgreSQL for pers
 - Events that were in-flight to app2 at the moment of the kill were lost (those specific HTTP requests returned 502 and the client would need to retry)
 - The Redis cache remained warm, so no cache-miss-driven load spike occurred on recovery
 
-### 7.4 Finding: Health Check Gap
+### 7.4 Finding: Health Check Gap (Resolved)
 
-During the database kill experiment (Experiment 4), a related finding was documented: the health check endpoint (`/health`) reported `"database": "connected"` even after PostgreSQL was killed, because the connection pool cached the connection state. Write operations correctly returned 500 errors.
+During the database kill experiment (Experiment 4), the health check endpoint initially reported `"database": "connected"` even after PostgreSQL was killed, because the connection pool cached the connection state.
 
-**Recommendation:** The health check should execute an active query (`SELECT 1`) on every call rather than relying on pool state. The current implementation in `app/__init__.py` does execute `db.execute_sql("SELECT 1")`, but the connection pool's `reuse_if_open=True` behavior may mask a dead connection until the pool attempts to actually use it.
+**Resolution:** The health check was fixed to close any existing connection before executing `SELECT 1`, ensuring it always tests a fresh connection. After the fix, the health endpoint correctly reports `{"database": "disconnected", "status": "degraded"}` when PostgreSQL is unavailable. This was verified with fresh evidence on 2026-04-05 (see `evidence/reliability/db_failure_health_check.txt`).
 
 ---
 
@@ -530,8 +530,8 @@ During the same chaos engineering session, four additional experiments were cond
 |---|---|---|---|
 | 1: Kill Flask instance | `docker compose kill app2` | Nginx routed around failure | Yes (HTTP 200, <5ms) |
 | 2: Kill Redis | `docker compose kill redis` | Database fallback activated | Yes (HTTP 200, <10ms) |
-| 3: Kill 3 of 5 instances | `docker compose kill app1 app3 app4` | 2 remaining instances handled full load | Yes (HTTP 200, <5ms) |
-| 4: Kill database | `docker compose kill db` | Health check falsely reported OK; writes returned 500 | Partial (reads cached, writes failed) |
+| 3: Kill multiple instances | Kill 2 of 3 instances | Remaining instance handled full load | Yes (HTTP 200, <5ms) |
+| 4: Kill database | `docker compose kill db` | Health check correctly reported degraded; writes returned 500 | Partial (writes failed) |
 | 5: Recovery verification | All containers restarted | All services healthy, restart counts at 0 | Yes |
 
-The system demonstrated strong resilience to component failures, with the database health check gap (Experiment 4) as the only finding requiring remediation.
+Note: Experiment 3 was originally conducted with a temporary 5-instance configuration (app1-app5) during chaos engineering. The production architecture uses 3 instances (app1, app2, app3). The health check issue from Experiment 4 has been fixed -- the health endpoint now executes a real `SELECT 1` query and correctly reports `"database": "disconnected"` when PostgreSQL is unavailable.

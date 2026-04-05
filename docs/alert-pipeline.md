@@ -147,7 +147,7 @@ Two alert groups are defined: application-level and infrastructure-level.
 
 **Behavior:** Fires when Prometheus fails to scrape a Flask instance for 15 consecutive seconds. The `up` metric is automatically set to 0 when a scrape target is unreachable. With a 10-second scrape interval, the alert transitions to firing after at minimum 2 failed scrapes (20 seconds) plus the `for` duration holdoff.
 
-**Verified:** Alert fired for `app2:5000` at 02:44:06Z and `app5:5000` at 02:49:21Z during chaos experiments. Both firing and resolved alerts were captured.
+**Verified:** Alert fired for `app2:5000` at 02:44:06Z and `app5:5000` at 02:49:21Z during chaos experiments (app5 was part of a temporary 5-instance configuration used during chaos testing; the production architecture runs 3 instances). Both firing and resolved alerts were captured.
 
 #### HighErrorRate
 
@@ -493,7 +493,7 @@ All evidence files are located in `evidence/evidence/`.
 
 **Incident duration (from Prometheus perspective):** 3 minutes 0 seconds (02:44:06Z to 02:47:06Z).
 
-#### Firing: app5 (Experiment 3 - Kill multiple instances)
+#### Firing: app5 (Experiment 3 - Kill multiple instances, temporary 5-instance config)
 
 **File:** `evidence/evidence/alert_ServiceDown_firing_2026-04-05T02-49-26.170881Z.json`
 

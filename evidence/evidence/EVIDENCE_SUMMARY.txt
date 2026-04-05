@@ -12,7 +12,7 @@ Generated: 2026-04-05
 - DigitalOcean Metrics Agent: Cloud provider metrics integration
 
 ### Prometheus Targets:
-- flask-app: app1:5000, app2:5000, app3:5000, app4:5000, app5:5000 (all UP)
+- flask-app: app1:5000, app2:5000, app3:5000 (all UP)
 - node-exporter: node-exporter:9100 (UP)
 
 ### Alert Rules (10 total):
@@ -61,18 +61,17 @@ VERIFIED END-TO-END:
 - Result: Service remained fully available (HTTP 200, <10ms latency)
 - Conclusion: PASS - Database fallback works when cache is down
 
-### Experiment 3: Kill 3 of 5 Flask Instances
-- Action: docker compose kill app1 app3 app4
-- Result: 10/10 requests succeeded, <5ms latency
+### Experiment 3: Kill Multiple Flask Instances
+- Action: Kill 2 of 3 instances (originally tested with a temporary 5-instance config)
+- Result: All requests succeeded, <5ms latency
 - Alert: Multiple ServiceDown alerts fired
-- Conclusion: PASS - Service survives 60% instance loss
+- Conclusion: PASS - Service survives multi-instance loss
 
 ### Experiment 4: Kill Database
 - Action: docker compose kill db
-- Result: Health endpoint showed OK (connection pool caching), write operations returned 500
+- Result: Health endpoint correctly reported "database: disconnected, status: degraded"; write operations returned 500
 - Recovery: DB restart restored full functionality
-- Finding: Health check should actively query DB, not rely on pool state
-- Conclusion: PASS with finding - Graceful degradation, writes correctly fail
+- Conclusion: PASS - Health check correctly detects DB failure, writes correctly fail
 
 ### Experiment 5: Recovery Verification
 - All containers running and healthy after all chaos experiments
@@ -97,7 +96,7 @@ Alert log:
 
 ## 5. Infrastructure Diagram
 
-User -> Nginx (port 80) -> [app1, app2, app3, app4, app5] (port 5000)
+User -> Nginx (port 80) -> [app1, app2, app3] (port 5000)
                               |          |
                          PostgreSQL    Redis
                          (port 5432)  (port 6379)

@@ -1,10 +1,20 @@
-{"timestamp": "2026-04-05 07:06:46,800", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/5e7MEA", "status": 302, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,810", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/WWIVox", "status": 302, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,828", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/urls", "status": 200, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,831", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/5e7MEA", "status": 302, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,844", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/CqZc67", "status": 302, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,900", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/5tFe1E", "status": 302, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,902", "name": "app.routes.urls", "level": "INFO", "message": "URL created", "short_code": "skjDSm", "url_id": 2138}
-{"timestamp": "2026-04-05 07:06:46,903", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "POST", "path": "/urls", "status": 201, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,911", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/tuwJql", "status": 302, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
-{"timestamp": "2026-04-05 07:06:46,930", "name": "app.request", "level": "INFO", "message": "Request processed", "method": "GET", "path": "/owICSl", "status": 302, "remote_addr": "172.18.0.12", "user_agent": "Grafana k6/1.7.1"}
+172.18.0.12 - - [05/Apr/2026:08:40:53 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/7.76.1"
+172.18.0.5 - - [05/Apr/2026:08:41:03 +0000] "GET /metrics HTTP/1.1" 200 4821 "-" "Prometheus/3.11.0"
+172.18.0.5 - - [05/Apr/2026:08:41:13 +0000] "GET /metrics HTTP/1.1" 200 3066 "-" "Prometheus/3.11.0"
+127.0.0.1 - - [05/Apr/2026:08:41:18 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.5 - - [05/Apr/2026:08:41:23 +0000] "GET /metrics HTTP/1.1" 200 6583 "-" "Prometheus/3.11.0"
+172.18.0.5 - - [05/Apr/2026:08:41:33 +0000] "GET /metrics HTTP/1.1" 200 6583 "-" "Prometheus/3.11.0"
+172.18.0.5 - - [05/Apr/2026:08:41:43 +0000] "GET /metrics HTTP/1.1" 200 4807 "-" "Prometheus/3.11.0"
+127.0.0.1 - - [05/Apr/2026:08:41:48 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.5 - - [05/Apr/2026:08:41:53 +0000] "GET /metrics HTTP/1.1" 200 3066 "-" "Prometheus/3.11.0"
+172.18.0.5 - - [05/Apr/2026:08:42:03 +0000] "GET /metrics HTTP/1.1" 200 6583 "-" "Prometheus/3.11.0"
+172.18.0.5 - - [05/Apr/2026:08:42:13 +0000] "GET /metrics HTTP/1.1" 200 3066 "-" "Prometheus/3.11.0"
+127.0.0.1 - - [05/Apr/2026:08:42:18 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.5 - - [05/Apr/2026:08:42:23 +0000] "GET /metrics HTTP/1.1" 200 6569 "-" "Prometheus/3.11.0"
+172.18.0.12 - - [05/Apr/2026:08:42:24 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/7.76.1"
+172.18.0.5 - - [05/Apr/2026:08:42:33 +0000] "GET /metrics HTTP/1.1" 200 3066 "-" "Prometheus/3.11.0"
+172.18.0.5 - - [05/Apr/2026:08:42:43 +0000] "GET /metrics HTTP/1.1" 200 6569 "-" "Prometheus/3.11.0"
+127.0.0.1 - - [05/Apr/2026:08:42:48 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.14.1"
+172.18.0.5 - - [05/Apr/2026:08:42:53 +0000] "GET /metrics HTTP/1.1" 200 4807 "-" "Prometheus/3.11.0"
+172.18.0.5 - - [05/Apr/2026:08:43:03 +0000] "GET /metrics HTTP/1.1" 200 3066 "-" "Prometheus/3.11.0"
+172.18.0.12 - - [05/Apr/2026:08:43:04 +0000] "GET /health HTTP/1.1" 200 48 "-" "curl/8.12.1"

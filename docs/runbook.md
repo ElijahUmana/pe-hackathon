@@ -4,7 +4,7 @@ This document defines response procedures for each alert and general incident ha
 
 ## Alert: ServiceDown
 
-**What it means:** A Flask application instance has been unreachable by Prometheus for over 1 minute. The `/metrics` endpoint is not responding.
+**What it means:** A Flask application instance has been unreachable by Prometheus for over 15 seconds. The `/metrics` endpoint is not responding.
 
 **Severity:** Critical
 
@@ -12,7 +12,7 @@ This document defines response procedures for each alert and general incident ha
 ```promql
 up{job="flask-app"} == 0
 ```
-Fires after 1 minute of continuous failure.
+Fires after 15 seconds of continuous failure (`for: 15s`).
 
 ### Immediate Actions
 
@@ -450,7 +450,7 @@ ETA to resolution: [time estimate or "unknown"]
 
 ### 1. Detect
 
-Alerts arrive via Discord (Alertmanager webhook). Check:
+Alerts arrive via the webhook receiver (with optional Discord forwarding if `DISCORD_WEBHOOK_URL` is configured). Check:
 - Alert name and severity
 - Which instance is affected
 - When it started firing
