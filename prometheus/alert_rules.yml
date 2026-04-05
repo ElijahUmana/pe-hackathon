@@ -3,12 +3,12 @@ groups:
     rules:
       - alert: ServiceDown
         expr: up{job="flask-app"} == 0
-        for: 15s
+        for: 5s
         labels:
           severity: critical
         annotations:
           summary: "Flask instance {{ $labels.instance }} is down"
-          description: "{{ $labels.instance }} has been unreachable for more than 15 seconds."
+          description: "{{ $labels.instance }} has been unreachable for more than 5 seconds."
 
       - alert: HighErrorRate
         expr: |
@@ -27,7 +27,7 @@ groups:
       - alert: HighLatency
         expr: |
           histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance)) > 2.0
-        for: 3m
+        for: 1m
         labels:
           severity: warning
         annotations:
@@ -35,13 +35,31 @@ groups:
           description: "p95 latency is {{ $value }}s, exceeding 2s threshold."
 
       - alert: HighMemoryUsage
-        expr: process_resident_memory_bytes / 1024 / 1024 > 512
+        expr: process_resident_memory_bytes / 1024 / 1024 > 200
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High memory usage on {{ $labels.instance }}"
-          description: "Memory usage is {{ $value }}MB."
+          description: "Memory usage is {{ $value }}MB, exceeding 200MB per-instance threshold."
+
+      - alert: CacheHitRatioLow
+        expr: (sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))) < 0.5
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Cache hit ratio below 50%"
+          description: "Cache hit ratio is {{ $value | humanizePercentage }}. Redis may be down or cache warming failed."
+
+      - alert: P99LatencyHigh
+        expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="flask-app"}[5m])) by (le)) > 5.0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "P99 latency above 5 seconds"
+          description: "P99 request latency is {{ $value }}s, indicating severe performance degradation."
 
   - name: infrastructure-alerts
     rules:

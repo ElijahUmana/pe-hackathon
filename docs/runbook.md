@@ -4,7 +4,7 @@ This document defines response procedures for each alert and general incident ha
 
 ## Alert: ServiceDown
 
-**What it means:** A Flask application instance has been unreachable by Prometheus for over 15 seconds. The `/metrics` endpoint is not responding.
+**What it means:** A Flask application instance has been unreachable by Prometheus for over 5 seconds. The `/metrics` endpoint is not responding.
 
 **Severity:** Critical
 
@@ -12,7 +12,7 @@ This document defines response procedures for each alert and general incident ha
 ```promql
 up{job="flask-app"} == 0
 ```
-Fires after 15 seconds of continuous failure (`for: 15s`).
+Fires after 5 seconds of continuous failure (`for: 5s`).
 
 ### Immediate Actions
 
@@ -144,7 +144,7 @@ docker compose restart app1 app2 app3
 
 ## Alert: HighLatency
 
-**What it means:** The 95th percentile of HTTP request latency exceeds 2 seconds over the last 5 minutes, sustained for at least 3 minutes.
+**What it means:** The 95th percentile of HTTP request latency exceeds 2 seconds over the last 5 minutes, sustained for at least 1 minute.
 
 **Severity:** Warning
 
@@ -196,13 +196,13 @@ If latency is above 5 seconds sustained, the system is effectively unusable for 
 
 ## Alert: HighMemoryUsage
 
-**What it means:** A Flask process's resident memory exceeds 512MB for more than 5 minutes.
+**What it means:** A Flask process's resident memory exceeds 200MB for more than 5 minutes. The threshold is set based on observed baseline of ~155MB under load.
 
 **Severity:** Warning
 
 **Alert rule:**
 ```promql
-process_resident_memory_bytes / 1024 / 1024 > 512
+process_resident_memory_bytes / 1024 / 1024 > 200
 ```
 
 ### Immediate Actions
@@ -243,6 +243,118 @@ If memory is critically low and containers are being OOM-killed:
 1. Add swap immediately (see [deployment.md](deployment.md))
 2. Reduce Gunicorn workers from 4 to 2
 3. Consider removing one Flask instance (2 instead of 3)
+
+---
+
+## Alert: CacheHitRatioLow
+
+**What it means:** The aggregate cache hit ratio has dropped below 50% for at least 2 minutes. This typically indicates Redis is unavailable or the cache is cold, forcing all redirect lookups to hit PostgreSQL directly.
+
+**Severity:** Warning
+
+**Alert rule:**
+```promql
+(sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))) < 0.5
+```
+
+### Immediate Actions
+
+1. **Check if Redis is running:**
+   ```bash
+   docker compose ps redis
+   docker compose exec redis redis-cli ping
+   ```
+   If Redis is down, Docker should be restarting it automatically.
+
+2. **Check Redis memory and key count:**
+   ```bash
+   docker compose exec redis redis-cli info memory
+   docker compose exec redis redis-cli dbsize
+   ```
+   If `dbsize` returns 0, the cache is empty (cold start or Redis was just restarted).
+
+3. **Check the current cache hit ratio in Prometheus:**
+   ```bash
+   curl -s 'http://localhost:9090/api/v1/query?query=sum(rate(cache_hits_total[5m]))/(sum(rate(cache_hits_total[5m]))+sum(rate(cache_misses_total[5m])))' | python3 -m json.tool
+   ```
+
+4. **If Redis is up but the cache is empty, warm it by requesting popular URLs:**
+   ```bash
+   # Fetch the top URLs to repopulate the cache
+   for code in $(curl -s http://localhost/urls?per_page=20 | python3 -c "import sys,json; [print(u['short_code']) for u in json.load(sys.stdin)]"); do
+     curl -s -o /dev/null http://localhost/$code
+   done
+   ```
+
+### Root Cause Investigation
+
+| Scenario | Root Cause | Fix |
+|---|---|---|
+| Redis container not running | Redis crashed or was killed | Wait for Docker auto-restart, or `docker compose restart redis` |
+| Redis running, dbsize=0 | Redis was recently restarted, cache is cold | Cache will warm naturally under traffic; use manual warm-up script for faster recovery |
+| Redis running, dbsize>0, ratio still low | Working set changed (new URLs being accessed) | Normal transient behavior; monitor for improvement |
+| Redis running, high memory, evictions | Redis maxmemory reached | Increase maxmemory or reduce TTL |
+
+### Escalation
+
+If the cache hit ratio does not recover above 50% within 10 minutes and Redis appears healthy, investigate whether the traffic pattern has fundamentally changed (new URLs not in cache). Check the HighLatency alert -- a sustained low cache ratio will eventually cause latency degradation.
+
+---
+
+## Alert: P99LatencyHigh
+
+**What it means:** The 99th percentile of request latency across all Flask instances exceeds 5 seconds, sustained for at least 2 minutes. This indicates severe tail-latency degradation affecting the worst 1% of requests.
+
+**Severity:** Warning
+
+**Alert rule:**
+```promql
+histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="flask-app"}[5m])) by (le)) > 5.0
+```
+
+### Immediate Actions
+
+1. **Check if the HighLatency (p95) alert is also firing:**
+   ```bash
+   curl -s 'http://localhost:9090/api/v1/query?query=histogram_quantile(0.95,sum(rate(http_request_duration_seconds_bucket[5m]))by(le))' | python3 -m json.tool
+   ```
+   If p95 is also above threshold, the latency issue is widespread. If only p99 is high, a small subset of requests is slow.
+
+2. **Identify slow endpoints:**
+   ```bash
+   curl -s 'http://localhost:9090/api/v1/query?query=histogram_quantile(0.99,sum(rate(http_request_duration_seconds_bucket[5m]))by(le,endpoint))' | python3 -m json.tool
+   ```
+
+3. **Check for resource saturation:**
+   ```bash
+   docker stats --no-stream
+   free -h
+   uptime  # check load average
+   ```
+
+4. **Check for long-running database queries:**
+   ```bash
+   docker compose exec db psql -U postgres -d hackathon_db -c \
+     "SELECT pid, state, query, now() - query_start AS duration FROM pg_stat_activity WHERE state = 'active' ORDER BY duration DESC LIMIT 10;"
+   ```
+
+5. **Check cache hit ratio (cache misses increase latency):**
+   ```bash
+   curl -s 'http://localhost:9090/api/v1/query?query=sum(rate(cache_hits_total[5m]))/(sum(rate(cache_hits_total[5m]))+sum(rate(cache_misses_total[5m])))' | python3 -m json.tool
+   ```
+
+### Root Cause Investigation
+
+| Scenario | Root Cause | Fix |
+|---|---|---|
+| p99 high, p95 normal | A few requests hitting slow paths (large list queries, cold cache entries) | Investigate specific endpoints; ensure pagination is used |
+| p99 and p95 both high | Systemic issue: CPU saturation, DB overload, or Redis down | Check host resources, restart bottleneck component |
+| p99 high on redirect endpoint only | Cache misses for specific URLs hitting slow DB queries | Check Redis health and cache hit ratio |
+| p99 spikes during load test | Expected under extreme load on 1 vCPU | Monitor for recovery during cool-down; consider scaling if sustained |
+
+### Escalation
+
+If p99 latency exceeds 10 seconds, the system is severely degraded for tail users. Reduce incoming load if possible and check the HighLatency runbook for additional diagnostic steps.
 
 ---
 

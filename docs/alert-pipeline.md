@@ -137,15 +137,15 @@ Two alert groups are defined: application-level and infrastructure-level.
 ```yaml
 - alert: ServiceDown
   expr: up{job="flask-app"} == 0
-  for: 15s
+  for: 5s
   labels:
     severity: critical
   annotations:
     summary: "Flask instance {{ $labels.instance }} is down"
-    description: "{{ $labels.instance }} has been unreachable for more than 15 seconds."
+    description: "{{ $labels.instance }} has been unreachable for more than 5 seconds."
 ```
 
-**Behavior:** Fires when Prometheus fails to scrape a Flask instance for 15 consecutive seconds. The `up` metric is automatically set to 0 when a scrape target is unreachable. With a 10-second scrape interval, the alert transitions to firing after at minimum 2 failed scrapes (20 seconds) plus the `for` duration holdoff.
+**Behavior:** Fires when Prometheus fails to scrape a Flask instance for 5 consecutive seconds. The `up` metric is automatically set to 0 when a scrape target is unreachable. With a 15-second scrape interval, the alert transitions to firing after at minimum 1 failed scrape plus the `for` duration holdoff. The reduced `for` duration (from 15s to 5s) enables faster detection of instance failures.
 
 **Verified:** Alert fired for `app2:5000` at 02:44:06Z and `app5:5000` at 02:49:21Z during chaos experiments (app5 was part of a temporary 5-instance configuration used during chaos testing; the production architecture runs 3 instances). Both firing and resolved alerts were captured.
 
@@ -175,7 +175,7 @@ Two alert groups are defined: application-level and infrastructure-level.
 - alert: HighLatency
   expr: |
     histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance)) > 2.0
-  for: 3m
+  for: 1m
   labels:
     severity: warning
   annotations:
@@ -183,22 +183,52 @@ Two alert groups are defined: application-level and infrastructure-level.
     description: "p95 latency is {{ $value }}s, exceeding 2s threshold."
 ```
 
-**Behavior:** Fires when the p95 request latency on any instance exceeds 2 seconds for 3 minutes. The 3-minute `for` duration prevents alerting on brief latency spikes during garbage collection or connection pool churn.
+**Behavior:** Fires when the p95 request latency on any instance exceeds 2 seconds for 1 minute. The 1-minute `for` duration balances fast detection against brief spikes from garbage collection or connection pool churn.
 
 #### HighMemoryUsage
 
 ```yaml
 - alert: HighMemoryUsage
-  expr: process_resident_memory_bytes / 1024 / 1024 > 512
+  expr: process_resident_memory_bytes / 1024 / 1024 > 200
   for: 5m
   labels:
     severity: warning
   annotations:
     summary: "High memory usage on {{ $labels.instance }}"
-    description: "Memory usage is {{ $value }}MB."
+    description: "Memory usage is {{ $value }}MB, exceeding 200MB per-instance threshold."
 ```
 
-**Behavior:** Fires when a Flask instance's RSS memory exceeds 512MB for 5 minutes. Intended as an early warning before OOM conditions.
+**Behavior:** Fires when a Flask instance's RSS memory exceeds 200MB for 5 minutes. The threshold is set based on observed baseline usage of ~155MB under load, providing early warning well before OOM conditions.
+
+#### CacheHitRatioLow
+
+```yaml
+- alert: CacheHitRatioLow
+  expr: (sum(rate(cache_hits_total[5m])) / (sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])))) < 0.5
+  for: 2m
+  labels:
+    severity: warning
+  annotations:
+    summary: "Cache hit ratio below 50%"
+    description: "Cache hit ratio is {{ $value | humanizePercentage }}. Redis may be down or cache warming failed."
+```
+
+**Behavior:** Fires when the aggregate cache hit ratio drops below 50% for 2 minutes. A low ratio indicates Redis is unavailable or the cache is cold, forcing all redirect lookups to PostgreSQL and increasing latency.
+
+#### P99LatencyHigh
+
+```yaml
+- alert: P99LatencyHigh
+  expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job="flask-app"}[5m])) by (le)) > 5.0
+  for: 2m
+  labels:
+    severity: warning
+  annotations:
+    summary: "P99 latency above 5 seconds"
+    description: "P99 request latency is {{ $value }}s, indicating severe performance degradation."
+```
+
+**Behavior:** Fires when the global p99 request latency exceeds 5 seconds for 2 minutes. This catches tail-latency degradation that p95-based alerts miss, indicating severe performance issues affecting the worst 1% of requests.
 
 ### Infrastructure Alert Rules (Group: `infrastructure-alerts`)
 
@@ -270,10 +300,12 @@ Two alert groups are defined: application-level and infrastructure-level.
 
 | Alert | Expression | For | Severity | Group |
 |---|---|---|---|---|
-| ServiceDown | `up{job="flask-app"} == 0` | 15s | critical | url-shortener-alerts |
+| ServiceDown | `up{job="flask-app"} == 0` | 5s | critical | url-shortener-alerts |
 | HighErrorRate | 5xx rate > 10% by instance | 2m | warning | url-shortener-alerts |
-| HighLatency | p95 > 2s by instance | 3m | warning | url-shortener-alerts |
-| HighMemoryUsage | RSS > 512MB | 5m | warning | url-shortener-alerts |
+| HighLatency | p95 > 2s by instance | 1m | warning | url-shortener-alerts |
+| HighMemoryUsage | RSS > 200MB | 5m | warning | url-shortener-alerts |
+| CacheHitRatioLow | Cache hit ratio < 50% | 2m | warning | url-shortener-alerts |
+| P99LatencyHigh | p99 > 5s | 2m | warning | url-shortener-alerts |
 | NodeExporterDown | `up{job="node-exporter"} == 0` | 30s | critical | infrastructure-alerts |
 | HostHighCpuUsage | CPU > 80% | 5m | warning | infrastructure-alerts |
 | HostHighMemoryUsage | Memory > 85% | 5m | warning | infrastructure-alerts |
@@ -472,7 +504,7 @@ All evidence files are located in `evidence/evidence/`.
 | Received at webhook | 2026-04-05T02:44:11.185348Z |
 | Fingerprint | 72330006fdb4c6ee |
 
-**Context:** app2 was killed via `docker compose kill app2` at 02:42:52Z as part of Chaos Experiment 1. Prometheus detected the failure and the alert fired after the 15-second `for` duration.
+**Context:** app2 was killed via `docker compose kill app2` at 02:42:52Z as part of Chaos Experiment 1. Prometheus detected the failure and the alert fired after the `for` duration.
 
 #### Resolved: app2
 
@@ -572,11 +604,11 @@ Total Response Time = Scrape Interval + For Duration + Group Wait + Network Late
 | Component | Duration | Notes |
 |---|---|---|
 | Scrape interval | 0-15s | Worst case is the full scrape interval if the failure happens right after a scrape |
-| For duration | 15s | Alert must remain true for 15 consecutive seconds |
+| For duration | 5s | Alert must remain true for 5 consecutive seconds |
 | Group wait (critical) | 5s | Alertmanager batching window |
 | Network (internal Docker) | <100ms | Container-to-container within same Docker network |
-| **Theoretical worst case** | **~35s** | |
-| **Theoretical best case** | **~20s** | Failure happens just before a scrape |
+| **Theoretical worst case** | **~25s** | |
+| **Theoretical best case** | **~10s** | Failure happens just before a scrape |
 
 #### For HostHighCpuUsage (warning):
 
@@ -644,7 +676,7 @@ The following was verified end-to-end during the chaos engineering session on 20
 |---|---|---|
 | Prometheus scrapes Flask instances every 15s | Verified | `prometheus.yml` config; `up` metric changes within 15s of kill |
 | `up` metric set to 0 when instance is unreachable | Verified | Alert fired with `expr: up{job="flask-app"} == 0` |
-| ServiceDown alert fires after 15s `for` duration | Verified | `startsAt` is ~74s after kill (includes scrape alignment) |
+| ServiceDown alert fires after 5s `for` duration | Verified | `startsAt` is ~74s after kill (includes scrape alignment) |
 | Alertmanager receives alert from Prometheus | Verified | Alert appears in Alertmanager UI and is dispatched to webhook |
 | Alertmanager groups by alertname+severity | Verified | Multiple ServiceDown alerts grouped in same notification batch |
 | Critical alerts use 5s group_wait | Verified | 5-second gap between `startsAt` and webhook `received_at` |
