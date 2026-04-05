@@ -32,4 +32,4 @@ HEALTHCHECK --interval=120s --timeout=5s --start-period=15s --retries=3 \
 # Production: gunicorn with 2 workers x 4 threads per instance
 # --access-logfile "" disables access logging (saves I/O)
 # --keep-alive 65 keeps upstream connections alive (matches nginx keepalive_timeout)
-CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "120", "--keep-alive", "65", "--worker-class", "gthread", "--access-logfile", "", "--log-level", "warning", "run:app"]
+CMD ["uv", "run", "gunicorn", "--bind", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "120", "--keep-alive", "65", "--worker-class", "gthread", "--log-level", "warning", "run:app"]
